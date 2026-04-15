@@ -41,3 +41,10 @@
 ## Evaluation Instructions
 1. Activate virtual environment: `conda activate car-rl`
 2. Infer checkpoint and save video: `python infer.py --model models/ppo_carracing_final.zip`
+
+## Model Checkpoint Strategy
+During training, multiple model `.zip` checkpoints are generated to document progression for the project report:
+- **Early Stage Agent** (e.g., `models/ppo_carracing_50000_steps.zip`): Struggles with direction and quickly drives off-road due to untrained CNN feature extractors.
+- **Mid Stage Agent** (e.g., `models/ppo_carracing_400000_steps.zip` or `750000_steps.zip`): Learns to track the curve but usually fails to complete long episodes.
+- **Final Model** (`models/ppo_carracing_final.zip`): The absolute final checkpoint at 1.5M steps. Scores well (e.g., ~716 reward), but might have slight exploratory degradation.
+- **Best Model** (`models/best_model.zip`): Automatically saved by the `EvalCallback` whenever a historical high-score is hit during training. The absolute best representation of the solved environment (flawlessly completing the track with a ~912 reward).
