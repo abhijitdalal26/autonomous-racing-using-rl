@@ -80,8 +80,13 @@ def evaluate(model_path: str, render: bool = True, video_out: str = ""):
     # ── the stacked env for model inference ──────────────────────────────
     inf_env = make_eval_env(render=render)
 
+    # Force both environments to generate the exact identical track
+    seed = 42
+    inf_env.seed(seed)
+    raw_env.unwrapped.reset(seed=seed)
+
     obs = inf_env.reset()
-    raw_obs, _ = raw_env.reset()
+    raw_obs, _ = raw_env.reset(seed=seed)
 
     total_reward = 0.0
     frames       = []
