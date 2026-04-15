@@ -1,0 +1,24 @@
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Conda / venv ─────────────────────────────────
+car-rl/
+venv/
+.venv/
+
+# ── Training outputs ─────────────────────────────
+# Exclude raw TensorBoard event files (large, generated)
+logs/
+# Exclude all model checkpoints EXCEPT the final model
+models/
+!models/ppo_carracing_final.zip
+!models/best_model.zip
+
+# ── Videos ───────────────────────────────────────
+videos/
+
+# ── OS artefacts ─────────────────────────────────
+.DS_Store
+Thumbs.db
