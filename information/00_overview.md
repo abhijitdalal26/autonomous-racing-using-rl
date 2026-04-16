@@ -13,9 +13,10 @@ This repository contains two distinct phases of an Autonomous Racing project uti
 
 ## Documentation Index
 Detailed information for each phase is available in this directory:
-1. [Gym Racing Technical Details](file:///d:/Abhijit/car-racing/information/01_gym_racing_details.md)
-2. [Unity Kart Setup & Training Guide](file:///d:/Abhijit/car-racing/information/02_unity_kart_guide.md)
-3. [Future RL Roadmap](file:///d:/Abhijit/car-racing/information/03_roadmap.md)
+1. [Gym Racing Technical Details](file:///d:/Abhijit/car-racing/information/Gymnasium_CarRacing/01_gym_racing_details.md)
+2. [Unity Kart Setup & Training Guide](file:///d:/Abhijit/car-racing/information/Unity_RL_Karting/02_unity_kart_guide.md)
+3. [Unity Kart Troubleshooting Log](file:///d:/Abhijit/car-racing/information/Unity_RL_Karting/setup_troubleshooting.md)
+4. [Future RL Roadmap](file:///d:/Abhijit/car-racing/information/03_roadmap.md)
 
 ---
 *Last Updated: 2026-04-16*

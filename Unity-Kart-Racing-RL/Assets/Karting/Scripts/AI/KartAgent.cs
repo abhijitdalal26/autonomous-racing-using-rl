@@ -1,4 +1,4 @@
-﻿using KartGame.KartSystems;
+using KartGame.KartSystems;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
@@ -193,16 +193,23 @@ namespace KartGame.AI
             sensor.AddObservation(m_Kart.LocalSpeed());
 
             // Add an observation for direction of the agent to the next checkpoint.
-            var next = (m_CheckpointIndex + 1) % Colliders.Length;
-            var nextCollider = Colliders[next];
-            if (nextCollider == null)
-                return;
+            if (Colliders != null && Colliders.Length > 0)
+            {
+                var next = (m_CheckpointIndex + 1) % Colliders.Length;
+                var nextCollider = Colliders[next];
+                if (nextCollider != null)
+                {
+                    var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
+                    sensor.AddObservation(Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction));
 
-            var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
-            sensor.AddObservation(Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction));
-
-            if (ShowRaycasts)
-                Debug.DrawLine(AgentSensorTransform.position, nextCollider.transform.position, Color.magenta);
+                    if (ShowRaycasts)
+                        Debug.DrawLine(AgentSensorTransform.position, nextCollider.transform.position, Color.magenta);
+                }
+            }
+            else
+            {
+                sensor.AddObservation(0f);
+            }
 
             m_LastAccumulatedReward = 0.0f;
             m_EndEpisode = false;
@@ -246,15 +253,19 @@ namespace KartGame.AI
             InterpretDiscreteActions(actions);
 
             // Find the next checkpoint when registering the current checkpoint that the agent has passed.
-            var next = (m_CheckpointIndex + 1) % Colliders.Length;
-            var nextCollider = Colliders[next];
-            var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
-            var reward = Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction);
+            if (Colliders != null && Colliders.Length > 0)
+            {
+                var next = (m_CheckpointIndex + 1) % Colliders.Length;
+                var nextCollider = Colliders[next];
+                var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
+                var reward = Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction);
 
-            if (ShowRaycasts) Debug.DrawRay(AgentSensorTransform.position, m_Kart.Rigidbody.linearVelocity, Color.blue);
+                if (ShowRaycasts) Debug.DrawRay(AgentSensorTransform.position, m_Kart.Rigidbody.linearVelocity, Color.blue);
 
-            // Add rewards if the agent is heading in the right direction
-            AddReward(reward * TowardsCheckpointReward);
+                // Add rewards if the agent is heading in the right direction
+                AddReward(reward * TowardsCheckpointReward);
+            }
+
             AddReward((m_Acceleration && !m_Brake ? 1.0f : 0.0f) * AccelerationReward);
             AddReward(m_Kart.LocalSpeed() * SpeedReward);
         }
@@ -264,6 +275,11 @@ namespace KartGame.AI
             switch (Mode)
             {
                 case AgentMode.Training:
+                    if (Colliders == null || Colliders.Length == 0)
+                    {
+                        Debug.LogWarning("No colliders (checkpoints) assigned to KartAgent! Please assign them in the Inspector.");
+                        return;
+                    }
                     m_CheckpointIndex = Random.Range(0, Colliders.Length - 1);
                     var collider = Colliders[m_CheckpointIndex];
                     transform.localRotation = collider.transform.rotation;

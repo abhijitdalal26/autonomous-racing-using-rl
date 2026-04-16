@@ -52,12 +52,17 @@ public class GameFlowManager : MonoBehaviour
     {
         if (autoFindKarts)
         {
-            karts = FindObjectsOfType<ArcadeKart>();
+            karts = FindObjectsByType<ArcadeKart>(FindObjectsSortMode.None);
             if (karts.Length > 0)
             {
                 if (!playerKart) playerKart = karts[0];
             }
             DebugUtility.HandleErrorIfNullFindObject<ArcadeKart, GameFlowManager>(playerKart, this);
+        }
+        else 
+        {
+            // If we manually assign karts, we still need to populate the array with them so they can move
+            karts = new ArcadeKart[] { playerKart };
         }
 
         m_ObjectiveManager = FindObjectOfType<ObjectiveManager>();

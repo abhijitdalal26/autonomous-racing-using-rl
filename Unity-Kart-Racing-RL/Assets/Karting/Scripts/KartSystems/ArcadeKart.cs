@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.VFX;
@@ -264,6 +264,11 @@ namespace KartGame.KartSystems
             }
         }
 
+        void Start()
+        {
+            Debug.Log($"[Kart Status] ArcadeKart Start() has successfully run on {gameObject.name}. Found {m_Inputs.Length} IInput scripts.");
+        }
+
         void AddTrailToWheel(WheelCollider wheel)
         {
             GameObject trailRoot = Instantiate(DriftTrailPrefab, gameObject.transform, false);
@@ -280,14 +285,17 @@ namespace KartGame.KartSystems
             m_DriftSparkInstances.Add((wheel, horizontalOffset, -rotation, spark));
         }
 
+        void Update()
+        {
+            GatherInputs();
+        }
+
         void FixedUpdate()
         {
             UpdateSuspensionParams(FrontLeftWheel);
             UpdateSuspensionParams(FrontRightWheel);
             UpdateSuspensionParams(RearLeftWheel);
             UpdateSuspensionParams(RearRightWheel);
-
-            GatherInputs();
 
             // apply our powerups to create our finalStats
             TickPowerups();
@@ -324,14 +332,28 @@ namespace KartGame.KartSystems
         void GatherInputs()
         {
             // reset input
-            Input = new InputData();
+            var mergedInput = new InputData();
             WantsToDrift = false;
 
             // gather nonzero input from our sources
             for (int i = 0; i < m_Inputs.Length; i++)
             {
-                Input = m_Inputs[i].GenerateInput();
-                WantsToDrift = Input.Brake && Vector3.Dot(Rigidbody.linearVelocity, transform.forward) > 0.0f;
+                var inputComponent = m_Inputs[i] as MonoBehaviour;
+                if (inputComponent != null && !inputComponent.enabled)
+                    continue;
+
+                var rawInput = m_Inputs[i].GenerateInput();
+                if (rawInput.Accelerate) mergedInput.Accelerate = true;
+                if (rawInput.Brake) mergedInput.Brake = true;
+                if (Mathf.Abs(rawInput.TurnInput) > 0.01f) mergedInput.TurnInput = rawInput.TurnInput;
+
+                if (rawInput.Brake && Vector3.Dot(Rigidbody.linearVelocity, transform.forward) > 0.0f) WantsToDrift = true;
+            }
+            Input = mergedInput;
+
+            if (UnityEngine.Input.GetKey(KeyCode.W))
+            {
+                Debug.Log($"[Kart Physics Update] W is held! Input struct: {Input.Accelerate}. Components Checked: {m_Inputs.Length}. CanMove: {m_CanMove}");
             }
         }
 
