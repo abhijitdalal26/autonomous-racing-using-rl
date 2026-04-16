@@ -93,8 +93,8 @@ def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = F
     hyperparams = dict(
         policy         = "CnnPolicy",
         learning_rate  = 3e-4,       
-        buffer_size    = 1_000_000,  # MAXIMUM: Will use around ~20-25GB of the 30GB CPU RAM chunk!
-        batch_size     = 1024,       # MAXIMUM: Forces the first GPU to process dense batches (filling VRAM)
+        buffer_size    = 50_000,     # Reverted: Large memory sizes cause severe FPS drops
+        batch_size     = 128,        # Reverted: Back to optimal batch processing rate
         learning_starts= 1000 if test_mode else 5000, 
         tau            = 0.005,      
         gamma          = 0.99,       
