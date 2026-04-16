@@ -15,6 +15,12 @@ logs/
 models/
 !models/ppo_carracing_final.zip
 !models/best_model.zip
+!models/sac_carracing_final.zip
+!models/sac_best/best_model.zip
+
+# ── Debug Logs and Large Archives ────────────────
+*.rar
+*.log
 
 # ── Videos ───────────────────────────────────────
 videos/
@@ -62,5 +68,4 @@ Assets/AddressableAssetsData/*/*.bin*
 Assets/StreamingAssets/aa.meta
 Assets/StreamingAssets/aa/*
 
-# ── Tutorial Projects ────────────────────────────
-Kart-Racing/
+
