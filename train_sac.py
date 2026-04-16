@@ -93,8 +93,8 @@ def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = F
     hyperparams = dict(
         policy         = "CnnPolicy",
         learning_rate  = 3e-4,       
-        buffer_size    = 50_000,     # Reduced specifically to prevent RTX 3050 OOM crash with images
-        batch_size     = 128,        
+        buffer_size    = 300_000,    # INCREASED: Kaggle has 16GB-30GB RAM, so we can store way more memory!
+        batch_size     = 256,        # INCREASED: Kaggle GPUs (T4/P100) have more VRAM than an RTX 3050
         learning_starts= 1000 if test_mode else 5000, 
         tau            = 0.005,      
         gamma          = 0.99,       
