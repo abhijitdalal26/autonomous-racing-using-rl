@@ -11,11 +11,12 @@ venv/
 # ── Training outputs ─────────────────────────────
 # Exclude raw TensorBoard event files (large, generated)
 logs/
-# Exclude all model checkpoints EXCEPT the final model
-models/
+# Exclude all model checkpoints EXCEPT specific final/best versions
+models/*
 !models/ppo_carracing_final.zip
 !models/best_model.zip
 !models/sac_carracing_final.zip
+!models/sac_carracing_950000_steps.zip
 !models/sac_best/best_model.zip
 
 # ── Debug Logs and Large Archives ────────────────
