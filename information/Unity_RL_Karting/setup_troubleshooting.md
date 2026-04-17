@@ -148,6 +148,47 @@ The agent reset logic used the checkpoint transform directly instead of finding 
 - aligns rotation more safely to the local surface
 - clears angular velocity on episode reset
 
+## 10. Destroyed Checkpoint References Caused `MissingReferenceException`
+
+### Symptom
+
+Unity reported:
+
+- `MissingReferenceException` on `UnityEngine.BoxCollider`
+
+### Cause
+
+The agent still held checkpoint collider references after one or more of those objects had been destroyed or invalidated.
+
+### Fix
+
+`KartAgent.cs` now:
+
+- removes dead checkpoint references before using them
+- refuses to reset or reward against invalid colliders
+- safely falls back when checkpoint lists become invalid
+
+## 11. Destroyed Input References Caused `NullReferenceException` In `ArcadeKart.GatherInputs`
+
+### Symptom
+
+Unity reported:
+
+- `NullReferenceException: Object reference not set to an instance of an object`
+- source line inside `ArcadeKart.GatherInputs()`
+
+### Cause
+
+`ArcadeKart` could keep stale `IInput` references and then try to call `GenerateInput()` on a destroyed or missing component.
+
+### Fix
+
+`ArcadeKart.cs` now:
+
+- refreshes input references when needed
+- skips null or destroyed input components
+- returns cleanly if no valid input sources exist
+
 ## Current Status
 
 Where the Unity phase stands now:
@@ -164,6 +205,7 @@ What is still not proven:
 
 Latest short run evidence:
 
-- trainer reached about `1533` steps before the session stopped
+- trainer reached about `79,804` steps before manual interrupt
+- mean reward stayed roughly between `-1.8` and `-2.4`
 - this confirms the pipeline is active
 - it does not yet prove the policy is learning well

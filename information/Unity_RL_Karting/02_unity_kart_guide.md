@@ -75,6 +75,12 @@ The repo-side scripts now do two important things for RL training:
 - emits 8 observations total
 - respawns by raycasting down to valid ground near the checkpoint
 - clears both linear and angular velocity during episode reset
+- ignores destroyed checkpoint references instead of crashing on them
+
+### `ArcadeKart.cs`
+
+- refreshes `IInput` references when needed
+- skips destroyed or missing input components instead of throwing `NullReferenceException`
 
 ## Training Command
 
@@ -90,6 +96,12 @@ Command:
 mlagents-learn kart_config.yaml --run-id=Kart_PPO_Test --force --timeout-wait 120
 ```
 
+Short validation run:
+
+```powershell
+mlagents-learn kart_config_test.yaml --run-id=Kart_PPO_Test_Short --force --timeout-wait 120
+```
+
 Then press Play in Unity.
 
 ## What You Should See In A Good Run
@@ -100,6 +112,7 @@ Then press Play in Unity.
 - crashes trigger new episodes instead of ending the whole game
 - no observation truncation warning
 - no timeout after connection
+- no destroyed-reference spam from checkpoint or input components
 
 ## What You Should Not Do Yet
 
@@ -110,6 +123,8 @@ Multi-kart training comes later, after the single-kart run is stable and clearly
 ## Key Files
 
 - `Assets/Karting/Scripts/AI/KartAgent.cs`
+- `Assets/Karting/Scripts/KartSystems/ArcadeKart.cs`
 - `Assets/Karting/Scripts/GameFlowManager.cs`
 - `Assets/Karting/Scenes/MainScene.unity`
 - `kart_config.yaml`
+- `kart_config_test.yaml`

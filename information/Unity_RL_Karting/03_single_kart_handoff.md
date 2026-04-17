@@ -22,6 +22,10 @@ The Unity project already includes these fixes:
   - uses 5 ray sensors plus speed, direction, and acceleration flag
   - resets to checkpoint using a downward raycast onto valid ground
   - clears angular velocity on reset
+  - filters out destroyed checkpoint references before reusing them
+- `ArcadeKart.cs`
+  - refreshes input sources when needed
+  - skips destroyed input references safely
 - `GameFlowManager.cs`
   - detects training runs
   - skips the countdown for training
@@ -58,6 +62,12 @@ Run:
 mlagents-learn kart_config.yaml --run-id=Kart_PPO_Test --force --timeout-wait 120
 ```
 
+Short test alternative:
+
+```powershell
+mlagents-learn kart_config_test.yaml --run-id=Kart_PPO_Test_Short --force --timeout-wait 120
+```
+
 Then press Play in Unity.
 
 ## What Should Happen Now
@@ -73,6 +83,7 @@ Then press Play in Unity.
 - reward trend improving over time
 - checkpoints being reached often enough to give useful learning signal
 - no hidden scene logic still interfering with training episodes
+- no recurring destroyed-reference errors in the Unity Console
 
 ## Useful Files To Check First
 
@@ -91,3 +102,9 @@ Only move to multiple karts after all of these are true:
 2. resets are clean and repeatable
 3. rewards are no longer dominated by immediate crashes
 4. at least one longer run shows actual learning, not just connectivity
+
+## Latest Verified Run
+
+- trainer connected and ran to about `79,804` steps
+- PPO checkpoints exported successfully on manual interrupt
+- mean reward remained negative, so training quality is still not where it needs to be

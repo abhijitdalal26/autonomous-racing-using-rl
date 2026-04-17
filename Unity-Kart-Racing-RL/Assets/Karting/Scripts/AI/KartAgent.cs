@@ -1,4 +1,5 @@
 using KartGame.KartSystems;
+using System.Collections.Generic;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
@@ -142,11 +143,14 @@ namespace KartGame.AI
                     if (Physics.Raycast(transform.position + Vector3.up, Vector3.down, out var hit, GroundCastDistance, TrackMask)
                         && ((1 << hit.collider.gameObject.layer) & OutOfBoundsMask) > 0)
                     {
-                        // Reset the agent back to its last known agent checkpoint
-                        var checkpoint = Colliders[m_CheckpointIndex].transform;
-                        transform.localRotation = checkpoint.rotation;
-                        transform.position = checkpoint.position;
-                        m_Kart.Rigidbody.linearVelocity = default;
+                        // Reset the agent back to its last known checkpoint if it is still valid.
+                        if (TryGetCheckpointCollider(m_CheckpointIndex, out var checkpointCollider))
+                        {
+                            ResetToCheckpoint(checkpointCollider);
+                            m_Kart.Rigidbody.linearVelocity = default;
+                            m_Kart.Rigidbody.angularVelocity = default;
+                        }
+
                         m_Steering = 0f;
 						m_Acceleration = m_Brake = false; 
                     }
@@ -157,6 +161,9 @@ namespace KartGame.AI
 
         void OnTriggerEnter(Collider other)
         {
+            if (!EnsureValidCheckpoints() || other == null)
+                return;
+
             var maskedValue = 1 << other.gameObject.layer;
             var triggered = maskedValue & CheckpointMask;
 
@@ -172,9 +179,15 @@ namespace KartGame.AI
 
         void FindCheckpointIndex(Collider checkPoint, out int index)
         {
+            if (!EnsureValidCheckpoints() || checkPoint == null)
+            {
+                index = -1;
+                return;
+            }
+
             for (int i = 0; i < Colliders.Length; i++)
             {
-                if (Colliders[i].GetInstanceID() == checkPoint.GetInstanceID())
+                if (Colliders[i] != null && Colliders[i].GetInstanceID() == checkPoint.GetInstanceID())
                 {
                     index = i;
                     return;
@@ -201,7 +214,7 @@ namespace KartGame.AI
             sensor.AddObservation(m_Kart.LocalSpeed());
 
             // Add an observation for direction of the agent to the next checkpoint.
-            if (Colliders != null && Colliders.Length > 0)
+            if (EnsureValidCheckpoints())
             {
                 var next = (m_CheckpointIndex + 1) % Colliders.Length;
                 var nextCollider = Colliders[next];
@@ -261,17 +274,20 @@ namespace KartGame.AI
             InterpretDiscreteActions(actions);
 
             // Find the next checkpoint when registering the current checkpoint that the agent has passed.
-            if (Colliders != null && Colliders.Length > 0)
+            if (EnsureValidCheckpoints())
             {
                 var next = (m_CheckpointIndex + 1) % Colliders.Length;
                 var nextCollider = Colliders[next];
-                var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
-                var reward = Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction);
+                if (nextCollider != null)
+                {
+                    var direction = (nextCollider.transform.position - m_Kart.transform.position).normalized;
+                    var reward = Vector3.Dot(m_Kart.Rigidbody.linearVelocity.normalized, direction);
 
-                if (ShowRaycasts) Debug.DrawRay(AgentSensorTransform.position, m_Kart.Rigidbody.linearVelocity, Color.blue);
+                    if (ShowRaycasts) Debug.DrawRay(AgentSensorTransform.position, m_Kart.Rigidbody.linearVelocity, Color.blue);
 
-                // Add rewards if the agent is heading in the right direction
-                AddReward(reward * TowardsCheckpointReward);
+                    // Add rewards if the agent is heading in the right direction
+                    AddReward(reward * TowardsCheckpointReward);
+                }
             }
 
             AddReward((m_Acceleration && !m_Brake ? 1.0f : 0.0f) * AccelerationReward);
@@ -283,7 +299,7 @@ namespace KartGame.AI
             switch (Mode)
             {
                 case AgentMode.Training:
-                    if (Colliders == null || Colliders.Length == 0)
+                    if (!EnsureValidCheckpoints())
                     {
                         Debug.LogWarning("No colliders (checkpoints) assigned to KartAgent! Please assign them in the Inspector.");
                         return;
@@ -338,6 +354,51 @@ namespace KartGame.AI
             }
 
             transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        }
+
+        bool EnsureValidCheckpoints()
+        {
+            if (Colliders == null || Colliders.Length == 0)
+                return false;
+
+            var validColliders = new List<Collider>(Colliders.Length);
+            for (int i = 0; i < Colliders.Length; i++)
+            {
+                if (Colliders[i] != null)
+                    validColliders.Add(Colliders[i]);
+            }
+
+            if (validColliders.Count == 0)
+            {
+                Colliders = null;
+                m_CheckpointIndex = 0;
+                return false;
+            }
+
+            if (validColliders.Count != Colliders.Length)
+            {
+                Colliders = validColliders.ToArray();
+            }
+
+            if (m_CheckpointIndex >= Colliders.Length)
+            {
+                m_CheckpointIndex = 0;
+            }
+
+            return true;
+        }
+
+        bool TryGetCheckpointCollider(int index, out Collider checkpointCollider)
+        {
+            checkpointCollider = null;
+            if (!EnsureValidCheckpoints())
+                return false;
+
+            if (index < 0 || index >= Colliders.Length)
+                return false;
+
+            checkpointCollider = Colliders[index];
+            return checkpointCollider != null;
         }
     }
 }

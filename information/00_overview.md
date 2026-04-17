@@ -22,8 +22,10 @@ This repository has two major tracks:
   - observation size
   - training-safe race start
   - training-safe respawn
+- destroyed-reference protection for inputs and checkpoints
 - Single-kart learning is not validated yet.
-- Latest short run reached about `1533` trainer steps before stopping, so the pipeline is alive but not proven.
+- A longer validation run reached about `79,804` steps before manual interrupt.
+- Mean reward during that run stayed around `-1.8` to `-2.4`, so the setup is running but learning quality still needs work.
 - Do not duplicate into multi-kart training yet. First confirm one kart can reset cleanly, keep running, and show improving reward.
 
 ## Recommended Resume Order
