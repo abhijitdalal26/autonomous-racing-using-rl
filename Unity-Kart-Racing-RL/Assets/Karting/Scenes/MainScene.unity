@@ -307,7 +307,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: eec9f03de17857a48ac47c6ae8577551, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: 
   combineParents:
   - {fileID: 77662692}
@@ -9434,7 +9434,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4f231c4fb786f3946a6b90b886c48677, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: 
   m_SendPointerHoverToParent: 1
   m_HorizontalAxis: Horizontal
@@ -12901,6 +12901,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Kart_Player
       objectReference: {fileID: 0}
+    - target: {fileID: 4810912518991602691, guid: 19954de30401f73428254541a9ad156e,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4810912518991602692, guid: 19954de30401f73428254541a9ad156e,
         type: 3}
       propertyPath: m_RootOrder
@@ -15392,6 +15397,9 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   GroundCastDistance: 0
+  RespawnHeight: 0.5
+  RespawnProbeHeight: 10
+  RespawnProbeDistance: 30
   ShowRaycasts: 1
 --- !u!114 &1553637080
 MonoBehaviour:
@@ -15440,7 +15448,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
   DecisionPeriod: 5
   DecisionStep: 0
