@@ -55,7 +55,7 @@ def make_env(rank: int, seed: int = 42):
 # Training
 # ──────────────────────────────────────────────────────────────────────────────
 
-def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = False):
+def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = False, resume_path: str = None):
     # Folders
     log_dir   = "./logs/"
     model_dir = "./models/"
@@ -107,7 +107,18 @@ def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = F
         device         = device,
     )
 
-    model = SAC(env=vec_env, **hyperparams)
+    if resume_path:
+        if not os.path.exists(resume_path):
+            raise FileNotFoundError(f"Cannot resume! Checkpoint not found at: {resume_path}")
+        print(f"\n[RESUME] Loading model weights from {resume_path} ...")
+        # Note: SB3 does not save the Replay Buffer by default to save disk space.
+        # The buffer will start empty and quickly refill during the first few steps.
+        model = SAC.load(resume_path, env=vec_env, device=device, custom_objects=hyperparams)
+        reset_timesteps = False
+    else:
+        print("\n[INIT] Starting fresh SAC model ...")
+        model = SAC(env=vec_env, **hyperparams)
+        reset_timesteps = True
 
     print("\n──────────────────────────────────────")
     print(f"Policy network:\n{model.policy}")
@@ -147,7 +158,7 @@ def train(total_timesteps: int = 1_500_000, n_envs: int = 4, test_mode: bool = F
         total_timesteps   = total_timesteps,
         callback          = callbacks,
         tb_log_name       = "SAC_CarRacing",
-        reset_num_timesteps= True,
+        reset_num_timesteps= reset_timesteps,
         progress_bar      = True,
     )
 
@@ -172,10 +183,13 @@ if __name__ == "__main__":
                         help="Total env timesteps (ignored in --test mode)")
     parser.add_argument("--n-envs",     type=int, default=4,
                         help="Number of parallel environments")
+    parser.add_argument("--resume",     type=str, default=None,
+                        help="Path to a .zip checkpoint to resume training from")
     args = parser.parse_args()
 
     train(
         total_timesteps = args.timesteps,
         n_envs          = args.n_envs,
         test_mode       = args.test,
+        resume_path     = args.resume,
     )
