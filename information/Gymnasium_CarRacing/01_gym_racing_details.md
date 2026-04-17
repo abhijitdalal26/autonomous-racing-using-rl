@@ -1,50 +1,139 @@
-# Project Context: Autonomous Racing using RL
+# Gymnasium CarRacing Technical Details
 
-**Goal**: Train an agent to autonomously navigate and complete the track in the Gymnasium `CarRacing-v3` environment using Proximal Policy Optimization (PPO).
+## Status
 
-## Technology Stack
-- **Python Version**: 3.10 (managed via Miniconda environment `car-rl`)
-- **Core RL Library**: `stable-baselines3[extra]`
-- **Environment**: `gymnasium[box2d]`
-- **Deep Learning Backend**: `torch` (CUDA 12.4 for RTX 3050 GPU)
-- **Monitoring & Visualization**: `tensorboard`, `opencv-python`
+This phase is the stable reference baseline for the project.
 
-## Architectural Decisions
-1. **Observation Space**: The native `CarRacing-v3` top-down RGB image (96x96) is wrapped using `GrayscaleObservation`. This drops the channel dimension to 1, significantly improving computation speed without sacrificing essential track features.
-2. **Temporal Awareness**: Because single frames don't communicate velocity or acceleration, we use `VecFrameStack` (n=4). The PPO model's CNN ingests a 4-channel image representing the 4 most recent grayscale timestamps.
-3. **Policy Network**: We use SB3's natively integrated `CnnPolicy` configured to handle spatial feature extraction.
-4. **Environment Version**: `CarRacing-v3` differs from `v2` primarily in that it correctly returns `terminated=True` when the track lap is successfully completed.
-5. **Parallelism**: Training spawns 4 parallel environments (`SubprocVecEnv` or `DummyVecEnv` depending on OS multithreading stability) to gather rollouts faster.
+- Environment: `gymnasium` `CarRacing-v3`
+- Main solved setup: PPO
+- Best result documented in the project: about `912.91` reward
+- Current focus is no longer Gymnasium experimentation; Unity is the active phase
 
-## Project Structure
-- `train.py`: The entry-point for initiating the PPO training. It configures the environment wrappers, specifies PPO hyperparameters, and mounts Callbacks (`CheckpointCallback`, `EvalCallback`).
-- `infer.py`: The evaluation script. Loads a `.zip` model from `models/` and executes a deterministic episode loop while recording and saving raw RGB frames to an `.mp4` file in `videos/`.
-- `models/`: Destination folder for periodic epoch checkpoints.
-- `logs/`: Destination for TensorBoard metrics (`--logdir ./logs`). 
-- `videos/`: Destination for `.mp4` artifacts.
+## Purpose Of This Phase
 
-## PPO Hyperparameters
-- *n_steps*: 512
-- *batch_size*: 128
-- *n_epochs*: 10
-- *learning_rate*: 3e-4
-- *gamma*: 0.99
-- *gae_lambda*: 0.95
-- *clip_range*: 0.2
-- *ent_coef*: 0.01 (Promotes exploratory actions to avoid early local-minimums)
+The Gymnasium work established a working end-to-end reinforcement learning pipeline before moving into Unity.
+It proved:
 
-## Training Instructions
-1. Activate virtual environment: `conda activate car-rl`
-2. Run standard training: `python train.py` (~1.5M steps default)
-3. During run, host logs using: `tensorboard --logdir ./logs`
+- environment wrapping
+- image-based policy learning
+- checkpointing
+- TensorBoard monitoring
+- evaluation video generation
 
-## Evaluation Instructions
-1. Activate virtual environment: `conda activate car-rl`
-2. Infer checkpoint and save video: `python infer.py --model models/ppo_carracing_final.zip`
+## Core Stack
 
-## Model Checkpoint Strategy
-During training, multiple model `.zip` checkpoints are generated to document progression for the project report:
-- **Early Stage Agent** (e.g., `models/ppo_carracing_50000_steps.zip`): Struggles with direction and quickly drives off-road due to untrained CNN feature extractors.
-- **Mid Stage Agent** (e.g., `models/ppo_carracing_400000_steps.zip` or `750000_steps.zip`): Learns to track the curve but usually fails to complete long episodes.
-- **Final Model** (`models/ppo_carracing_final.zip`): The absolute final checkpoint at 1.5M steps. Scores well (e.g., ~716 reward), but might have slight exploratory degradation.
-- **Best Model** (`models/best_model.zip`): Automatically saved by the `EvalCallback` whenever a historical high-score is hit during training. The absolute best representation of the solved environment (flawlessly completing the track with a ~912 reward).
+- Python: `3.10`
+- RL library: `stable-baselines3[extra]`
+- Environment: `gymnasium[box2d]`
+- Deep learning: `torch`
+- Monitoring: `tensorboard`
+- Video export: `opencv-python`
+
+## Files In Active Use
+
+- `train.py`
+  - PPO trainer for `CarRacing-v3`
+- `infer.py`
+  - PPO evaluation and video export
+- `train_sac.py`
+  - SAC experiment script
+- `infer_sac.py`
+  - SAC evaluation script
+- `models/`
+  - saved checkpoints
+- `logs/`
+  - TensorBoard logs
+- `videos/`
+  - exported evaluation videos
+
+## PPO Baseline Design
+
+The solved PPO setup uses:
+
+- `CnnPolicy`
+- grayscale observations
+- 4-frame stack
+- vectorized environments
+- TensorBoard logging
+- checkpoint and evaluation callbacks
+
+### Why grayscale and frame stacking were used
+
+- grayscale reduces computation while preserving track structure
+- a single image does not encode motion well
+- stacking 4 frames gives the policy enough short-term temporal context to infer movement and steering effect
+
+## PPO Hyperparameters In `train.py`
+
+- `learning_rate = 3e-4`
+- `n_steps = 512`
+- `batch_size = 128`
+- `n_epochs = 10`
+- `gamma = 0.99`
+- `gae_lambda = 0.95`
+- `clip_range = 0.2`
+- `ent_coef = 0.01`
+
+These values were kept close to proven PPO defaults for image control tasks and produced the successful baseline.
+
+## PPO Training Commands
+
+Standard run:
+
+```powershell
+conda activate car-rl
+python train.py
+```
+
+Quick smoke test:
+
+```powershell
+conda activate car-rl
+python train.py --test
+```
+
+TensorBoard:
+
+```powershell
+conda activate car-rl
+tensorboard --logdir ./logs
+```
+
+## PPO Evaluation
+
+```powershell
+conda activate car-rl
+python infer.py --model models/best_model.zip
+```
+
+The script runs one deterministic episode and writes an MP4 to `videos/`.
+
+## SAC Experiment Track
+
+There is also a SAC branch in the repo:
+
+- trainer: `train_sac.py`
+- evaluator: `infer_sac.py`
+
+This was exploratory work, not the main solved baseline. The documented successful result still belongs to PPO.
+
+## Useful Gymnasium Artifacts
+
+- `models/best_model.zip`
+  - best PPO checkpoint saved by evaluation callback
+- `models/ppo_carracing_final.zip`
+  - final PPO save from the long run
+- `images/`
+  - plots and visuals used for reporting
+- `logs/PPO_CarRacing_*`
+  - TensorBoard event files
+
+## Why This Matters To The Unity Phase
+
+The Gymnasium phase is the project sanity check:
+
+- the RL workflow works
+- the machine can train image-based policies
+- the repo already has a proven single-agent baseline
+
+When Unity behaves badly, compare it against this phase as the known-good control case.

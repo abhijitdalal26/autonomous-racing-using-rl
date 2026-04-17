@@ -35,6 +35,8 @@ namespace KartGame.AI
     /// </summary>
     public class KartAgent : Agent, IInput
     {
+        const int k_DefaultRespawnMask = (1 << 9) | (1 << 10) | (1 << 11);
+
 #region Training Modes
         [Tooltip("Are we training the agent or is the agent production ready?")]
         public AgentMode Mode = AgentMode.Training;
@@ -81,6 +83,12 @@ namespace KartGame.AI
         public LayerMask TrackMask;
         [Tooltip("How far should the ray be when casted? For larger karts - this value should be larger too.")]
         public float GroundCastDistance;
+        [Tooltip("How high above the detected ground to place the kart when resetting during training.")]
+        public float RespawnHeight = 0.5f;
+        [Tooltip("How far above a checkpoint to search for valid track ground during training resets.")]
+        public float RespawnProbeHeight = 10f;
+        [Tooltip("How far downward to search for the track when resetting during training.")]
+        public float RespawnProbeDistance = 30f;
 #endregion
 
 #region Debugging
@@ -280,11 +288,11 @@ namespace KartGame.AI
                         Debug.LogWarning("No colliders (checkpoints) assigned to KartAgent! Please assign them in the Inspector.");
                         return;
                     }
-                    m_CheckpointIndex = Random.Range(0, Colliders.Length - 1);
+                    m_CheckpointIndex = Random.Range(0, Colliders.Length);
                     var collider = Colliders[m_CheckpointIndex];
-                    transform.localRotation = collider.transform.rotation;
-                    transform.position = collider.transform.position;
+                    ResetToCheckpoint(collider);
                     m_Kart.Rigidbody.linearVelocity = default;
+                    m_Kart.Rigidbody.angularVelocity = default;
                     m_Acceleration = false;
                     m_Brake = false;
                     m_Steering = 0f;
@@ -309,6 +317,27 @@ namespace KartGame.AI
                 Brake = m_Brake,
                 TurnInput = m_Steering
             };
+        }
+
+        void ResetToCheckpoint(Collider checkpointCollider)
+        {
+            var checkpointTransform = checkpointCollider.transform;
+            var spawnRotation = Quaternion.Euler(0f, checkpointTransform.eulerAngles.y, 0f);
+            var spawnPosition = checkpointCollider.bounds.center + Vector3.up * (checkpointCollider.bounds.extents.y + RespawnHeight);
+
+            var rayOrigin = checkpointCollider.bounds.center + Vector3.up * RespawnProbeHeight;
+            var respawnMask = TrackMask.value != 0 ? TrackMask.value : k_DefaultRespawnMask;
+            if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, RespawnProbeDistance, respawnMask, QueryTriggerInteraction.Ignore))
+            {
+                spawnPosition = hit.point + Vector3.up * RespawnHeight;
+                var projectedForward = Vector3.ProjectOnPlane(checkpointTransform.forward, hit.normal).normalized;
+                if (projectedForward.sqrMagnitude > 0.0001f)
+                {
+                    spawnRotation = Quaternion.LookRotation(projectedForward, hit.normal);
+                }
+            }
+
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
         }
     }
 }

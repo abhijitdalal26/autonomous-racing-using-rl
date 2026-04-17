@@ -1,31 +1,115 @@
-# Unity Kart RL Setup & Training Guide
+# Unity Kart ML-Agents Setup And Training Guide
 
-This guide outlines the manual steps required in the Unity Editor and the subsequent AI training process.
+## Current Goal
 
-## 1. Scene Setup Checklist
-Before starting training, ensure the following are configured in the `Kart-Racing` project:
-- [ ] **Track Walls**: Tagged as `Wall`.
-- [ ] **Checkpoints**: At least 3-4 invisible colliders tagged as `Checkpoint` placed around the track.
-- [ ] **Kart Object**: Must have `Rigidbody`, `Box Collider`, `Behavior Parameters`, and `KartAgent` (script) attached.
+The current objective is narrow on purpose:
 
-## 2. Agent Configuration (Inspector)
-- **Behavior Parameters**:
-  - `Behavior Name`: `KartAgent`
-  - `Vector Action`: Discrete (Branches: 2, Sizes: 3 and 2).
-- **Kart Agent Script**:
-  - `Colliders`: Drag all checkpoint objects here in order.
-  - `Sensors`: Assign empty transforms on the kart as observation points.
-  - `Masks`: Set to detect `Wall` and `Checkpoint` tags.
+- verify that one kart can train correctly in Unity
+- only after that, duplicate into multi-kart training
 
-## 3. Training Process
-Training is executed via the Python `ml-agents` library:
-```bash
-# Command to start training (to be run in terminal)
-mlagents-learn kart_config.yaml --run-id=Kart_PPO_01
+At the moment, single-kart learning is still the gate.
+
+## Scene To Use
+
+- Unity project folder: `Unity-Kart-Racing-RL`
+- active scene: `Assets/Karting/Scenes/MainScene.unity`
+
+## Single Kart Definition Of Done
+
+Single-kart training is considered healthy only if:
+
+1. Python trainer starts without import errors.
+2. Unity connects and keeps running.
+3. The kart can move, crash, reset, and continue for many episodes.
+4. The whole game does not switch into normal win or lose scenes during training.
+5. Reward trends improve over time instead of staying dominated by immediate crashes.
+
+## Current Inspector Baseline
+
+These are the important values the current setup expects.
+
+### `Kart_AI`
+
+- has `ArcadeKart`
+- has `KartAgent`
+- has `Behavior Parameters`
+- has `Decision Requester`
+
+### `Behavior Parameters`
+
+- `Behavior Name`: `KartAgent`
+- `Behavior Type`: default
+- `Vector Observation Size`: `8`
+- action space: discrete
+- branch sizes: `3` and `2`
+
+### `Decision Requester`
+
+- `Decision Period`: `5`
+- `Take Actions Between Decisions`: enabled
+
+### `KartAgent`
+
+- 5 sensor transforms assigned
+- checkpoint colliders assigned in order
+- `CheckpointMask` points to the checkpoint layer
+- reward values currently used:
+  - `HitPenalty = -1`
+  - `PassCheckpointReward = 1`
+  - `TowardsCheckpointReward = 0.1`
+  - `SpeedReward = 0.05`
+  - `AccelerationReward = 0.05`
+
+## Important Training-Side Code Behavior
+
+The repo-side scripts now do two important things for RL training:
+
+### `GameFlowManager.cs`
+
+- skips the normal race countdown when a training kart is present
+- starts movement immediately in training mode
+- does not drive training into `WinScene` or `LoseScene`
+
+### `KartAgent.cs`
+
+- emits 8 observations total
+- respawns by raycasting down to valid ground near the checkpoint
+- clears both linear and angular velocity during episode reset
+
+## Training Command
+
+Run from:
+
+```powershell
+D:\Abhijit\car-racing\Unity-Kart-Racing-RL
 ```
 
-## 4. Multi-Agent Training (Optimizing Speed)
-To train faster, **Duplicate** the AI Kart 10-20 times in the scene. ML-Agents will synchronize the learning from all karts simultaneously into one brain.
+Command:
 
----
-*Note: The C# logic resides in `Assets/Karting/Scripts/AI/KartAgent.cs`.*
+```powershell
+mlagents-learn kart_config.yaml --run-id=Kart_PPO_Test --force --timeout-wait 120
+```
+
+Then press Play in Unity.
+
+## What You Should See In A Good Run
+
+- trainer starts listening
+- Unity connects
+- kart begins acting almost immediately
+- crashes trigger new episodes instead of ending the whole game
+- no observation truncation warning
+- no timeout after connection
+
+## What You Should Not Do Yet
+
+Do not duplicate the kart into 10 to 20 copies yet.
+
+Multi-kart training comes later, after the single-kart run is stable and clearly learning.
+
+## Key Files
+
+- `Assets/Karting/Scripts/AI/KartAgent.cs`
+- `Assets/Karting/Scripts/GameFlowManager.cs`
+- `Assets/Karting/Scenes/MainScene.unity`
+- `kart_config.yaml`
