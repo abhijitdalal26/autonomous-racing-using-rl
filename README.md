@@ -2,6 +2,12 @@
 
 A Proximal Policy Optimization (PPO) agent that learns to drive and complete a lap in the **Gymnasium `CarRacing-v3`** environment from raw pixel observations.
 
+## Demo
+
+Watch the best-trained PPO agent complete a full lap successfully:
+
+<video src="./videos/best_model.mp4" width="600" controls></video>
+
 ---
 
 ## Project Structure
