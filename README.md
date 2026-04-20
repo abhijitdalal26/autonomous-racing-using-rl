@@ -4,9 +4,9 @@ A Proximal Policy Optimization (PPO) agent that learns to drive and complete a l
 
 ## Demo
 
-Watch the best-trained PPO agent complete a full lap successfully (click the image to open the MP4):
+Watch the best-trained PPO agent complete a full lap successfully:
 
-[![PPO best model demo](./images/03_best_model_solved.jpg)](./videos/best_model.mp4)
+[![PPO best model demo GIF](./images/best_model.gif)](./videos/best_model.mp4)
 
 ---
 
