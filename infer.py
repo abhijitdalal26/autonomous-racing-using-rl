@@ -20,7 +20,7 @@ import argparse
 import numpy as np
 import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack, VecTransposeImage
 import cv2
 
@@ -66,13 +66,16 @@ def save_video(frames: list, output_path: str, fps: int = 30):
 # Main evaluation loop
 # ──────────────────────────────────────────────────────────────────────────────
 
-def evaluate(model_path: str, render: bool = True, video_out: str = ""):
+def evaluate(model_path: str, algo: str = "ppo", render: bool = True, video_out: str = ""):
     if not os.path.exists(model_path) and not os.path.exists(model_path + ".zip"):
         raise FileNotFoundError(f"Model not found: {model_path}")
 
-    print(f"[LOAD] {model_path}")
+    print(f"[LOAD] {model_path} with {algo.upper()}")
     # We set device="auto" so it picks up CUDA if available
-    model = PPO.load(model_path, device="auto")
+    if algo.lower() == "sac":
+        model = SAC.load(model_path, device="auto")
+    else:
+        model = PPO.load(model_path, device="auto")
 
     # ── a raw (un-stacked) env only for pixel capture ─────────────────────
     raw_env = gym.make("CarRacing-v3", continuous=True, render_mode="rgb_array")
@@ -145,9 +148,11 @@ def evaluate(model_path: str, render: bool = True, video_out: str = ""):
 # ──────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Evaluate a PPO CarRacing checkpoint")
+    parser = argparse.ArgumentParser(description="Evaluate a PPO/SAC CarRacing checkpoint")
     parser.add_argument("--model",     required=True,
                         help="Path to .zip model file")
+    parser.add_argument("--algo",      type=str, default="ppo", choices=["ppo", "sac"],
+                        help="Algorithm used to train the model (ppo or sac)")
     parser.add_argument("--no-render", action="store_true",
                         help="Disable on-screen window (video is still saved)")
     parser.add_argument("--video-out", default="",
@@ -156,6 +161,7 @@ if __name__ == "__main__":
 
     reward = evaluate(
         model_path = args.model,
+        algo       = args.algo,
         render     = not args.no_render,
         video_out  = args.video_out,
     )
