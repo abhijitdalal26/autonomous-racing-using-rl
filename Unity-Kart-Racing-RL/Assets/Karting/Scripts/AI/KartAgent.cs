@@ -60,6 +60,8 @@ namespace KartGame.AI
         public int TrainingResetGraceSteps = 25;
         [Tooltip("When enabled, a training episode ends as soon as the agent reaches the last checkpoint in the ordered list.")]
         public bool EndEpisodeOnLastCheckpoint = true;
+        [Tooltip("When enabled, training agents that leave the drivable track are penalized and reset.")]
+        public bool EndEpisodeWhenLeavingTrack = true;
         [Tooltip("Optional explicit training track config. If empty, the scene start line and checkpoints are auto-discovered.")]
         public TrainingTrackConfig TrackConfig;
 
@@ -97,6 +99,8 @@ namespace KartGame.AI
         public float WrongCheckpointPenalty = -0.5f;
         [Tooltip("When enabled, touching a checkpoint out of order immediately ends the current training episode.")]
         public bool EndEpisodeOnWrongCheckpoint = true;
+        [Tooltip("Penalty applied when a training agent leaves the drivable track.")]
+        public float OffTrackPenalty = -1f;
         #endregion
 
         #region ResetParams
@@ -107,6 +111,8 @@ namespace KartGame.AI
         public LayerMask TrackMask;
         [Tooltip("How far should the ray be when casted? For larger karts - this value should be larger too.")]
         public float GroundCastDistance;
+        [Tooltip("Fallback downward ray distance used in training when GroundCastDistance is not configured.")]
+        public float TrainingGroundCheckDistance = 5f;
         [Tooltip("How high above the detected ground to place the kart when resetting during training.")]
         public float RespawnHeight = 0.5f;
         [Tooltip("How far above a checkpoint to search for valid track ground during training resets.")]
@@ -184,8 +190,7 @@ namespace KartGame.AI
                         Debug.DrawRay(transform.position, Vector3.down * GroundCastDistance, Color.cyan);
 
                     // We want to place the agent back on the track if the agent happens to launch itself outside of the track.
-                    if (Physics.Raycast(transform.position + Vector3.up, Vector3.down, out var hit, GroundCastDistance, TrackMask)
-                        && ((1 << hit.collider.gameObject.layer) & OutOfBoundsMask) > 0)
+                    if (IsOffTrack(out var hit))
                     {
                         // Reset the agent back to its last known checkpoint if it is still valid.
                         if (TryGetCheckpointCollider(m_CheckpointIndex, out var checkpointCollider))
@@ -197,6 +202,17 @@ namespace KartGame.AI
 
                         m_Steering = 0f;
 						m_Acceleration = m_Brake = false; 
+                    }
+
+                    break;
+                case AgentMode.Training:
+                    if (!EndEpisodeWhenLeavingTrack || IsWithinTrainingResetGracePeriod())
+                        break;
+
+                    if (IsOffTrack(out _))
+                    {
+                        AddReward(OffTrackPenalty);
+                        EndEpisode();
                     }
 
                     break;
@@ -219,6 +235,8 @@ namespace KartGame.AI
             var expectedCheckpointIndex = (m_CheckpointIndex + 1) % Colliders.Length;
             var touchedExpectedCheckpoint = index == expectedCheckpointIndex;
             var touchedLastCheckpoint = index == Colliders.Length - 1;
+
+            if (index == m_CheckpointIndex) return; // Ignore if we hit the checkpoint we are already at!
 
             if (touchedExpectedCheckpoint)
             {
@@ -529,6 +547,24 @@ namespace KartGame.AI
             return true;
         }
 
+        bool IsOffTrack(out RaycastHit hit)
+        {
+            var groundCheckDistance = GroundCastDistance > 0f ? GroundCastDistance : TrainingGroundCheckDistance;
+            var trackMask = TrackMask.value != 0 ? TrackMask : (LayerMask)k_DefaultRespawnMask;
+            var rayOrigin = transform.position + Vector3.up;
+
+            if (ShowRaycasts)
+                Debug.DrawRay(rayOrigin, Vector3.down * groundCheckDistance, Color.cyan);
+
+            if (!Physics.Raycast(rayOrigin, Vector3.down, out hit, groundCheckDistance, trackMask, QueryTriggerInteraction.Ignore))
+                return true;
+
+            if (OutOfBoundsMask.value != 0 && ((1 << hit.collider.gameObject.layer) & OutOfBoundsMask) > 0)
+                return true;
+
+            return false;
+        }
+
         int GetTrainingStartCheckpointIndex()
         {
             if (Colliders == null || Colliders.Length == 0)
@@ -566,6 +602,11 @@ namespace KartGame.AI
         Vector3 GetTrainingSpawnOffset(Quaternion spawnRotation)
         {
             if (Mode != AgentMode.Training || TrainingSpawnSpacing <= 0f)
+                return Vector3.zero;
+
+            // Only apply spawn spacing if we are at the very first start line checkpoint.
+            // When resetting at corners, the grid formation pushes high-index karts backwards off the track mesh.
+            if (m_CheckpointIndex != 0 || RandomizeTrainingStartCheckpoint)
                 return Vector3.zero;
 
             var allAgents = FindObjectsByType<KartAgent>(FindObjectsSortMode.None);

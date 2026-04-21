@@ -35,10 +35,6 @@ It proved:
   - PPO trainer for `CarRacing-v3`
 - `infer.py`
   - PPO evaluation and video export
-- `train_sac.py`
-  - SAC experiment script
-- `infer_sac.py`
-  - SAC evaluation script
 - `models/`
   - saved checkpoints
 - `logs/`
@@ -108,14 +104,6 @@ python infer.py --model models/best_model.zip
 
 The script runs one deterministic episode and writes an MP4 to `videos/`.
 
-## SAC Experiment Track
-
-There is also a SAC branch in the repo:
-
-- trainer: `train_sac.py`
-- evaluator: `infer_sac.py`
-
-This was exploratory work, not the main solved baseline. The documented successful result still belongs to PPO.
 
 ## Useful Gymnasium Artifacts
 
