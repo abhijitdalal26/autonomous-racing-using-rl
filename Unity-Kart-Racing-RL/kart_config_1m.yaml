@@ -22,10 +22,11 @@ behaviors:
         gamma: 0.99
         strength: 1.0
 
-    max_steps: 50_000
+    max_steps: 1_000_000
+    checkpoint_interval: 250_000
     time_horizon: 64
-    summary_freq: 5_000
-    keep_checkpoints: 2
+    summary_freq: 10_000
+    keep_checkpoints: 5
 
 env_settings:
   timeout_wait: 180

@@ -31,3 +31,6 @@ behaviors:
     # When you duplicate Kart_AI in the scene, all copies share this one
     # behavior definition and their experiences are pooled automatically.
     # -------------------------------------------------------------------
+
+env_settings:
+  timeout_wait: 180
