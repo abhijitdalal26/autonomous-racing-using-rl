@@ -8,6 +8,14 @@ Watch the best-trained PPO agent complete a full lap successfully:
 
 [![PPO best model demo GIF](./images/best_model.gif)](./videos/best_model.mp4)
 
+Unity ML-Agents run recording:
+
+![Unity Car Racing Recording](./images/Unity-Car-Racing-Recording.gif)
+
+Unity training timing snapshot:
+
+![Unity Training Time](./images/unity-traning_time.png)
+
 ---
 
 ## Project Structure
