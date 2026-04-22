@@ -2,6 +2,25 @@
 
 This is the current source of truth for the Unity kart training work.
 
+## Latest Operator Notes
+
+These notes reflect the latest hands-on testing done after the first version of this document was written.
+
+- `SoloTrainingAgent` was turned off for pooled training.
+- `RandomizeTrainingStartCheckpoint` remains off.
+- short smoke tests were run with both `4` and `8` agents.
+- old training artifacts in `models/` and `Unity-Kart-Racing-RL/results/` were cleared before the next long-run setup.
+
+Important interpretation from the latest smoke tests:
+
+- if a kart goes backward later in the episode and then touches `Checkpoint (1)` or `Checkpoint (2)` out of order, that is normal early PPO behavior
+- if many karts trigger out-of-order checkpoints immediately at spawn or reset, that is a scene/layout issue
+
+Current operating conclusion:
+
+- `4` agents is the safer long-run setup right now
+- `8` agents should only be used for a long run if a fresh smoke test looks clean at spawn
+
 ## Where We Are
 
 The project is now past the early "trainer starts but the scene breaks" phase and into real PPO training runs inside Unity ML-Agents.
@@ -87,6 +106,12 @@ The most likely causes now are:
 2. one checkpoint trigger volume can still be touched from the spawn lane too early
 3. the live scene used during the test run had slightly different placement from the saved scene now on disk
 
+There is now an additional nuance from later smoke tests:
+
+- not every `wrong-checkpoint` warning is bad
+- later-episode warnings caused by random or backward driving are expected early in PPO
+- the warnings that matter most are the ones concentrated at spawn or immediately after reset
+
 ## What To Fix Next
 
 Before scaling up training, do these first:
@@ -95,6 +120,11 @@ Before scaling up training, do these first:
 2. Verify the first checkpoint physically in front of spawn is `Checkpoint` (index `0`).
 3. Keep `RandomizeTrainingStartCheckpoint` off until wrong-checkpoint endings drop sharply.
 4. Re-run a short PPO test and check that step-0 or very-early wrong-checkpoint endings are gone.
+
+Practical interpretation:
+
+- if the scene spawns cleanly and the later warnings come from agents driving badly, training can still proceed
+- if the warnings mostly happen at startup, do not start a long run until spawn layout is improved
 
 ## Training Config We Are Using
 
@@ -126,7 +156,7 @@ D:\Abhijit\car-racing\Unity-Kart-Racing-RL
 Run:
 
 ```powershell
-conda run -n car-rl mlagents-learn kart_config.yaml --run-id kart_train_01 --force
+mlagents-learn kart_config.yaml --run-id kart_train_01 --force
 ```
 
 Then press Play in Unity.
@@ -134,8 +164,60 @@ Then press Play in Unity.
 For a longer run:
 
 ```powershell
-conda run -n car-rl mlagents-learn kart_config_1m.yaml --run-id kart_train_1m --force
+mlagents-learn kart_config_1m.yaml --run-id kart_train_1m --force
 ```
+
+These commands assume the Python environment is already activated.
+
+## Current Recommended Long Run
+
+If the scene currently has `4` active training karts and the smoke test looked stable:
+
+```powershell
+mlagents-learn kart_config_1m.yaml --run-id kart_4agent_1m --force
+```
+
+If the scene actually has `8` active training karts:
+
+```powershell
+mlagents-learn kart_config_1m.yaml --run-id kart_8agent_1m --force
+```
+
+Only use the `8`-agent long run if the latest smoke test did not show obvious spawn-phase instability.
+
+## Resume And Continue Commands
+
+If a `1M` run is stopped in the middle, continue it with the same run id:
+
+```powershell
+mlagents-learn kart_config_1m.yaml --run-id kart_4agent_1m --resume
+```
+
+or, for an `8`-agent run:
+
+```powershell
+mlagents-learn kart_config_1m.yaml --run-id kart_8agent_1m --resume
+```
+
+If a `1M` run finishes and you want to continue the same run toward `2M`, use the `2M` config with the same run id and `--resume`.
+
+Example for a `4`-agent run:
+
+```powershell
+mlagents-learn kart_config.yaml --run-id kart_4agent_1m --resume
+```
+
+Example for an `8`-agent run:
+
+```powershell
+mlagents-learn kart_config.yaml --run-id kart_8agent_1m --resume
+```
+
+Rule of thumb:
+
+- use `--force` for a brand-new run
+- use `--resume` for continuing an interrupted run
+- keep the same run id when continuing from `1M` to `2M`
 
 ## How To Scale To More AI Agents
 
@@ -168,12 +250,17 @@ After that is stable, move to:
 
 - `8` scene agents total
 
+Later testing refined this decision:
+
+- `4` agents currently looks acceptable for a real long PPO run when the bad checkpoint touches happen later from random driving
+- `8` agents is still more sensitive to spawn quality and should be treated as conditional, not the default safe setup
+
 ### Process-level scaling after scene stability
 
 The bigger speed-up comes from using a built Unity executable with multiple environments:
 
 ```powershell
-conda run -n car-rl mlagents-learn kart_config_1m.yaml --run-id kart_train_4env --env Builds\KartTrainer\KartTrainer.exe --num-envs 4 --no-graphics --force
+mlagents-learn kart_config_1m.yaml --run-id kart_train_4env --env Builds\KartTrainer\KartTrainer.exe --num-envs 4 --no-graphics --force
 ```
 
 That is the better "real training" route once the scene is stable.
@@ -198,3 +285,25 @@ Use this order next session:
 5. disable `SoloTrainingAgent`
 6. duplicate to `4` training karts
 7. start the first real pooled PPO run
+
+## Pre-Run Checklist For Long Training
+
+Before starting a long `1M` or `2M` run:
+
+1. keep `Behavior Name = KartAgent`
+2. keep `Behavior Type = Default`
+3. keep `Mode = Training`
+4. keep `Model = None`
+5. keep `SoloTrainingAgent = off`
+6. keep `RandomizeTrainingStartCheckpoint = off`
+7. turn `Show Raycasts = off`
+8. turn `Write Episode Trace = off` for the long run
+
+## Cleanup Note
+
+Before the current long-run preparation, old training artifacts were removed from:
+
+- `models/`
+- `Unity-Kart-Racing-RL/results/`
+
+That cleanup is useful whenever the workspace is getting cluttered and a completely fresh run is desired.
