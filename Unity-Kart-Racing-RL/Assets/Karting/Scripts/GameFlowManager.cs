@@ -8,6 +8,8 @@ public enum GameState{Play, Won, Lost}
 
 public class GameFlowManager : MonoBehaviour
 {
+    const string TrainingAgentComponentName = "KartAgent";
+
     [Header("Parameters")]
     [Tooltip("Duration of the fade-to-black at the end of the game")]
     public float endSceneLoadDelay = 3f;
@@ -47,6 +49,7 @@ public class GameFlowManager : MonoBehaviour
     float m_TimeLoadEndGameScene;
     string m_SceneToLoad;
     float elapsedTimeBeforeEndScene = 0;
+    bool m_IsTrainingMode;
 
     void Start()
     {
@@ -73,6 +76,8 @@ public class GameFlowManager : MonoBehaviour
 
         AudioUtility.SetMasterVolume(1);
 
+        m_IsTrainingMode = HasTrainingAgent();
+
         winDisplayMessage.gameObject.SetActive(false);
         loseDisplayMessage.gameObject.SetActive(false);
 
@@ -82,11 +87,17 @@ public class GameFlowManager : MonoBehaviour
 			k.SetCanMove(false);
         }
 
-        //run race countdown animation
-        ShowRaceCountdownAnimation();
-        StartCoroutine(ShowObjectivesRoutine());
-
-        StartCoroutine(CountdownThenStartRaceRoutine());
+        if (m_IsTrainingMode)
+        {
+            StartRace();
+        }
+        else
+        {
+            //run race countdown animation
+            ShowRaceCountdownAnimation();
+            StartCoroutine(ShowObjectivesRoutine());
+            StartCoroutine(CountdownThenStartRaceRoutine());
+        }
     }
 
     IEnumerator CountdownThenStartRaceRoutine() {
@@ -120,6 +131,8 @@ public class GameFlowManager : MonoBehaviour
 
     void Update()
     {
+        if (m_IsTrainingMode)
+            return;
 
         if (gameState != GameState.Play)
         {
@@ -188,5 +201,19 @@ public class GameFlowManager : MonoBehaviour
             loseDisplayMessage.delayBeforeShowing = delayBeforeWinMessage;
             loseDisplayMessage.gameObject.SetActive(true);
         }
+    }
+
+    bool HasTrainingAgent()
+    {
+        if (karts == null)
+            return false;
+
+        foreach (ArcadeKart kart in karts)
+        {
+            if (kart != null && kart.GetComponent(TrainingAgentComponentName) != null)
+                return true;
+        }
+
+        return false;
     }
 }

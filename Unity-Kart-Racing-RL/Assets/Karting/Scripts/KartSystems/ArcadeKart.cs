@@ -234,7 +234,7 @@ namespace KartGame.KartSystems
         void Awake()
         {
             Rigidbody = GetComponent<Rigidbody>();
-            m_Inputs = GetComponents<IInput>();
+            RefreshInputs();
 
             UpdateSuspensionParams(FrontLeftWheel);
             UpdateSuspensionParams(FrontRightWheel);
@@ -267,6 +267,11 @@ namespace KartGame.KartSystems
         void Start()
         {
             Debug.Log($"[Kart Status] ArcadeKart Start() has successfully run on {gameObject.name}. Found {m_Inputs.Length} IInput scripts.");
+        }
+
+        void OnEnable()
+        {
+            RefreshInputs();
         }
 
         void AddTrailToWheel(WheelCollider wheel)
@@ -331,6 +336,17 @@ namespace KartGame.KartSystems
 
         void GatherInputs()
         {
+            if (m_Inputs == null || m_Inputs.Length == 0)
+            {
+                RefreshInputs();
+                if (m_Inputs == null || m_Inputs.Length == 0)
+                {
+                    Input = default;
+                    WantsToDrift = false;
+                    return;
+                }
+            }
+
             // reset input
             var mergedInput = new InputData();
             WantsToDrift = false;
@@ -339,10 +355,17 @@ namespace KartGame.KartSystems
             for (int i = 0; i < m_Inputs.Length; i++)
             {
                 var inputComponent = m_Inputs[i] as MonoBehaviour;
-                if (inputComponent != null && !inputComponent.enabled)
+                if (inputComponent == null)
                     continue;
 
-                var rawInput = m_Inputs[i].GenerateInput();
+                if (!inputComponent.enabled)
+                    continue;
+
+                var inputSource = inputComponent as IInput;
+                if (inputSource == null)
+                    continue;
+
+                var rawInput = inputSource.GenerateInput();
                 if (rawInput.Accelerate) mergedInput.Accelerate = true;
                 if (rawInput.Brake) mergedInput.Brake = true;
                 if (Mathf.Abs(rawInput.TurnInput) > 0.01f) mergedInput.TurnInput = rawInput.TurnInput;
@@ -355,6 +378,11 @@ namespace KartGame.KartSystems
             {
                 Debug.Log($"[Kart Physics Update] W is held! Input struct: {Input.Accelerate}. Components Checked: {m_Inputs.Length}. CanMove: {m_CanMove}");
             }
+        }
+
+        void RefreshInputs()
+        {
+            m_Inputs = GetComponents<IInput>();
         }
 
         void TickPowerups()
