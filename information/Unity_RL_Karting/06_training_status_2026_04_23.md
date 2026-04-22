@@ -43,5 +43,11 @@ The training pipeline has been stabilized. We have moved from a state of constan
 
 ## Next Steps
 1.  Evaluate the 1M step `.onnx` model in the Unity scene using `Inference Only` mode with `UseScenePositionOnStart` enabled.
-2.  Proceed to **Step 1 of the Roadmap**: Multi-Agent Racing.
-3.  Explore **Step 2**: Transitioning from Raycasts to Computer Vision/LIDAR.
+2.  **Standalone Build Success:** A working Windows build has been exported (~150MB uncompressed, 48MB compressed as `Build.rar`).
+3.  **Roadmap Progress:** Step 1 (Training) is fully complete. Moving to Multi-Agent Racing.
+
+[INFO] KartAgent. Step: 990000. Time Elapsed: 3398.225 s. Mean Reward: 180.357. Std of Reward: 26.639. Training.
+[INFO] KartAgent. Step: 1000000. Time Elapsed: 3433.422 s. Mean Reward: 182.409. Std of Reward: 13.069. Training.
+[INFO] Exported results\kart_4agent_new\KartAgent\KartAgent-999989.onnx
+[INFO] Exported results\kart_4agent_new\KartAgent\KartAgent-1000053.onnx
+[INFO] Copied results\kart_4agent_new\KartAgent\KartAgent-1000053.onnx to results\kart_4agent_new\KartAgent.onnx.
