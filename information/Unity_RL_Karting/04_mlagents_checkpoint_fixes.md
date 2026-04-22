@@ -26,3 +26,18 @@ if (index == m_CheckpointIndex) return; // Ignore if we hit the checkpoint we ar
 ## 5. Feedback Flash HUD Annoyance
 **Issue:** The screen constantly pulses red "Game Over" flashes during training.
 **Fix:** Unticked/Disabled the `FeedbackFlashHUD` script on the UI Canvas. It is not needed for AI training.
+
+## 6. Python JSON Serialization Bug (Numpy float32)
+**Issue:** ML-Agents (v1.1.0) crashes when saving `training_status.json` because it cannot serialize `numpy.float32` rewards into JSON.
+**Symptom:** `TypeError: Object of type float32 is not JSON serializable` and a corrupted `training_status.json` file.
+**Fix:** Patched `mlagents/trainers/training_status.py` in the conda environment to use a custom `NumpyEncoder` that converts `np.floating` to standard Python floats.
+
+## 7. Manual JSON Reconstruction - Missing Keys
+**Issue:** When manually repairing a corrupted `training_status.json`, omitting the `auxillary_file_paths` key causes a crash during the next checkpoint save.
+**Symptom:** `KeyError: 'auxillary_file_paths'` in `checkpoint_manager.py` during cleanup of old checkpoints.
+**Fix:** Ensure every checkpoint entry in `training_status.json` includes the `auxillary_file_paths` list, even if it only contains the `.pt` file path.
+
+## 8. Checkpoint Layer Mask
+**Issue:** Karts drive through arches but the target magenta line does not update.
+**Symptom:** No rewards gained, target stays fixed on the passed checkpoint.
+**Fix:** Ensure the physical arches are on a layer that matches the **Checkpoint Mask** setting in the `KartAgent` inspector (usually the "Checkpoint" layer).
