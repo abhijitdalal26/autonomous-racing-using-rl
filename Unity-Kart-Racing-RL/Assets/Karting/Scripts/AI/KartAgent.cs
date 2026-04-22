@@ -68,6 +68,8 @@ namespace KartGame.AI
         public bool EndEpisodeWhenLeavingTrack = true;
         [Tooltip("Optional explicit training track config. If empty, the scene checkpoints are auto-discovered.")]
         public TrainingTrackConfig TrackConfig;
+        [Tooltip("When enabled, the agent will start from its current position in the scene instead of teleporting to a spawn point or checkpoint.")]
+        public bool UseScenePositionOnStart;
 
 #endregion
 
@@ -224,7 +226,7 @@ namespace KartGame.AI
                 m_CheckpointsPassedThisEpisode = 0;
                 if (TryGetCheckpointCollider(m_CheckpointIndex, out var checkpointCollider))
                 {
-                    ResetToCheckpoint(checkpointCollider);
+                    // ResetToCheckpoint(checkpointCollider); // Commented out to allow starting from Editor position
                     ClearMotionAndInput();
                 }
 
@@ -497,6 +499,12 @@ namespace KartGame.AI
                     m_CheckpointsPassedThisEpisode = 0;
                     m_EpisodeNumber++;
                     m_PendingEndReason = null;
+                    if (UseScenePositionOnStart && m_StepsSinceReset == 0)
+                    {
+                        TraceEvent("episode-begin", "spawn=ScenePosition;UseScenePositionOnStart=true");
+                        ClearMotionAndInput();
+                        break;
+                    }
                     var collider = Colliders[m_CheckpointIndex];
                     if (TryGetEpisodeSpawnPoint(out var spawnPoint) && !RandomizeTrainingStartCheckpoint)
                     {

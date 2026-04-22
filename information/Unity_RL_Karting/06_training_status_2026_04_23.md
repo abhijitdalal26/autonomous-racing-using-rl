@@ -32,9 +32,16 @@ The training pipeline has been stabilized. We have moved from a state of constan
 - **Agents:** 4
 - **Mean Reward:** ~210 (Stable)
 - **Std Dev:** ~25 (Highly consistent)
-- **Steps Reached:** ~430,000 / 1,000,000
+- **Steps Reached:** 1,000,000 (Complete)
+
+## Post-Training Features Added
+
+### 1. User-Controlled Racing Mode
+- **Feature:** Added `UseScenePositionOnStart` toggle to `KartAgent`.
+- **Function:** When enabled, the AI kart starts exactly where it is placed in the Unity Editor, rather than teleporting to a spawn point or checkpoint. This allows for manual racing setups next to human players or other AI agents.
+- **Inference Tweak:** Modified `Start()` to prevent automatic checkpoint snapping when in `Inferencing` mode, ensuring the editor position is preserved.
 
 ## Next Steps
-1.  Allow the current 1M step run to complete.
-2.  Evaluate the `.onnx` model in the Unity scene using `Inference Only` mode.
-3.  If successful, consider scaling back up to **8 agents** using the now-stable spawn grid settings.
+1.  Evaluate the 1M step `.onnx` model in the Unity scene using `Inference Only` mode with `UseScenePositionOnStart` enabled.
+2.  Proceed to **Step 1 of the Roadmap**: Multi-Agent Racing.
+3.  Explore **Step 2**: Transitioning from Raycasts to Computer Vision/LIDAR.
