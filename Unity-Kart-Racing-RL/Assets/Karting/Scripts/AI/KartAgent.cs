@@ -44,25 +44,27 @@ namespace KartGame.AI
         public AgentMode Mode = AgentMode.Training;
         [Tooltip("What is the initial checkpoint the agent will go to? This value is only for inferencing.")]
         public ushort InitCheckpointIndex;
-        [Tooltip("When enabled, training episodes can begin from any checkpoint. Disable for full-lap training from the start line.")]
+        [Tooltip("When enabled, training episodes can begin from any checkpoint. Disable to always start from checkpoint 0.")]
         public bool RandomizeTrainingStartCheckpoint;
-        [Tooltip("Checkpoint index used for training when random starts are disabled. Set to 0 for the starting line.")]
+        [Tooltip("Checkpoint index used for training when random starts are disabled. Set to 0 for the first checkpoint.")]
         public ushort TrainingStartCheckpointIndex;
         [Tooltip("When enabled, agents that were duplicated from prefabs can rebuild their checkpoint list from the scene.")]
         public bool AutoAssignSceneCheckpoints = true;
+        [Tooltip("When enabled, only the primary training kart stays active and any duplicate training copies disable themselves.")]
+        public bool SoloTrainingAgent = true;
         [Tooltip("How far apart training karts should be placed sideways when they share the same checkpoint reset.")]
         public float TrainingSpawnSpacing = 4f;
-        [Tooltip("How far behind the start line each extra training row should be placed.")]
+        [Tooltip("How far behind the first checkpoint each extra training row should be placed.")]
         public float TrainingSpawnRowSpacing = 6f;
         [Tooltip("Maximum number of training karts to place side by side before starting a new row.")]
         public int TrainingSpawnColumns = 3;
         [Tooltip("How many training action steps to ignore crash-ending ray hits after each reset.")]
         public int TrainingResetGraceSteps = 25;
-        [Tooltip("When enabled, a training episode ends as soon as the agent reaches the last checkpoint in the ordered list.")]
+        [Tooltip("When enabled, a training episode ends when the agent returns to the checkpoint where the episode started.")]
         public bool EndEpisodeOnLastCheckpoint = true;
         [Tooltip("When enabled, training agents that leave the drivable track are penalized and reset.")]
         public bool EndEpisodeWhenLeavingTrack = true;
-        [Tooltip("Optional explicit training track config. If empty, the scene start line and checkpoints are auto-discovered.")]
+        [Tooltip("Optional explicit training track config. If empty, the scene checkpoints are auto-discovered.")]
         public TrainingTrackConfig TrackConfig;
 
 #endregion
@@ -131,6 +133,8 @@ namespace KartGame.AI
         bool m_Brake;
         float m_Steering;
         int m_CheckpointIndex;
+        int m_EpisodeStartCheckpointIndex;
+        int m_CheckpointsPassedThisEpisode;
 
         bool m_EndEpisode;
         float m_LastAccumulatedReward;
@@ -141,6 +145,13 @@ namespace KartGame.AI
             m_Kart = GetComponent<ArcadeKart>();
             if (AgentSensorTransform == null) AgentSensorTransform = transform;
             if (TrackConfig == null) TrackConfig = TrainingTrackConfig.Resolve();
+
+            if (Mode == AgentMode.Training && SoloTrainingAgent && ShouldDisableAsExtraTrainingAgent())
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+
             RefreshTrainingCheckpointsFromScene();
         }
 
@@ -155,11 +166,9 @@ namespace KartGame.AI
                 }
 
                 m_CheckpointIndex = ClampCheckpointIndex(InitCheckpointIndex);
-                if (m_CheckpointIndex == 0 && TryResetToStartLine())
-                {
-                    ClearMotionAndInput();
-                }
-                else if (TryGetCheckpointCollider(m_CheckpointIndex, out var checkpointCollider))
+                m_EpisodeStartCheckpointIndex = m_CheckpointIndex;
+                m_CheckpointsPassedThisEpisode = 0;
+                if (TryGetCheckpointCollider(m_CheckpointIndex, out var checkpointCollider))
                 {
                     ResetToCheckpoint(checkpointCollider);
                     ClearMotionAndInput();
@@ -234,7 +243,6 @@ namespace KartGame.AI
 
             var expectedCheckpointIndex = (m_CheckpointIndex + 1) % Colliders.Length;
             var touchedExpectedCheckpoint = index == expectedCheckpointIndex;
-            var touchedLastCheckpoint = index == Colliders.Length - 1;
 
             if (index == m_CheckpointIndex) return; // Ignore if we hit the checkpoint we are already at!
 
@@ -242,8 +250,16 @@ namespace KartGame.AI
             {
                 AddReward(PassCheckpointReward);
                 m_CheckpointIndex = index;
+                m_CheckpointsPassedThisEpisode++;
+                var returnedToEpisodeStartCheckpoint = index == m_EpisodeStartCheckpointIndex &&
+                                                      m_CheckpointsPassedThisEpisode >= Colliders.Length;
 
-                if (Mode == AgentMode.Training && EndEpisodeOnLastCheckpoint && touchedLastCheckpoint)
+                if (ShowRaycasts)
+                {
+                    Debug.Log($"{name} advanced to checkpoint {m_CheckpointIndex}.");
+                }
+
+                if (Mode == AgentMode.Training && EndEpisodeOnLastCheckpoint && returnedToEpisodeStartCheckpoint)
                 {
                     EndEpisode();
                 }
@@ -271,7 +287,7 @@ namespace KartGame.AI
 
             for (int i = 0; i < Colliders.Length; i++)
             {
-                if (Colliders[i] != null && Colliders[i].GetInstanceID() == checkPoint.GetInstanceID())
+                if (IsSameCheckpoint(Colliders[i], checkPoint))
                 {
                     index = i;
                     return;
@@ -394,12 +410,8 @@ namespace KartGame.AI
                         return;
                     }
                     m_CheckpointIndex = GetTrainingStartCheckpointIndex();
-                    if (!RandomizeTrainingStartCheckpoint && m_CheckpointIndex == 0 && TryResetToStartLine())
-                    {
-                        ClearMotionAndInput();
-                        break;
-                    }
-
+                    m_EpisodeStartCheckpointIndex = m_CheckpointIndex;
+                    m_CheckpointsPassedThisEpisode = 0;
                     var collider = Colliders[m_CheckpointIndex];
                     ResetToCheckpoint(collider);
                     ClearMotionAndInput();
@@ -489,6 +501,9 @@ namespace KartGame.AI
             if (Mode != AgentMode.Training || !AutoAssignSceneCheckpoints)
                 return;
 
+            if (HasConfiguredCheckpointList())
+                return;
+
             var activeTrackConfig = ResolveTrackConfig();
             if (activeTrackConfig != null && activeTrackConfig.TryGetOrderedCheckpoints(out var discoveredCheckpoints))
             {
@@ -499,6 +514,9 @@ namespace KartGame.AI
 
         bool TryAssignSceneCheckpoints()
         {
+            if (HasConfiguredCheckpointList())
+                return true;
+
             if (!(AutoAssignSceneCheckpoints || Mode == AgentMode.Training))
                 return false;
 
@@ -511,40 +529,26 @@ namespace KartGame.AI
             return true;
         }
 
+        bool HasConfiguredCheckpointList()
+        {
+            if (Colliders == null || Colliders.Length == 0)
+                return false;
+
+            for (int i = 0; i < Colliders.Length; i++)
+            {
+                if (Colliders[i] != null)
+                    return true;
+            }
+
+            return false;
+        }
+
         TrainingTrackConfig ResolveTrackConfig()
         {
             if (TrackConfig == null)
                 TrackConfig = TrainingTrackConfig.Resolve();
 
             return TrackConfig;
-        }
-
-        bool TryResetToStartLine()
-        {
-            var activeTrackConfig = ResolveTrackConfig();
-            if (activeTrackConfig == null || !activeTrackConfig.TryGetStartLine(out var startLineTransform, out var startLineCollider))
-                return false;
-
-            var spawnRotation = Quaternion.Euler(0f, startLineTransform.eulerAngles.y, 0f);
-            var spawnAnchor = startLineCollider != null ? startLineCollider.bounds.center : startLineTransform.position;
-            var spawnPosition = spawnAnchor + Vector3.up * RespawnHeight;
-
-            var rayOrigin = spawnAnchor + Vector3.up * RespawnProbeHeight;
-            var respawnMask = TrackMask.value != 0 ? TrackMask.value : k_DefaultRespawnMask;
-            if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, RespawnProbeDistance, respawnMask, QueryTriggerInteraction.Ignore))
-            {
-                spawnPosition = hit.point + Vector3.up * RespawnHeight;
-                var projectedForward = Vector3.ProjectOnPlane(startLineTransform.forward, hit.normal).normalized;
-                if (projectedForward.sqrMagnitude > 0.0001f)
-                {
-                    spawnRotation = Quaternion.LookRotation(projectedForward, hit.normal);
-                }
-            }
-
-            spawnPosition -= spawnRotation * Vector3.forward * Mathf.Max(0f, activeTrackConfig.StartLineBackOffset);
-            spawnPosition += GetTrainingSpawnOffset(spawnRotation);
-            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
-            return true;
         }
 
         bool IsOffTrack(out RaycastHit hit)
@@ -604,7 +608,7 @@ namespace KartGame.AI
             if (Mode != AgentMode.Training || TrainingSpawnSpacing <= 0f)
                 return Vector3.zero;
 
-            // Only apply spawn spacing if we are at the very first start line checkpoint.
+            // Only apply spawn spacing if we are at the very first checkpoint.
             // When resetting at corners, the grid formation pushes high-index karts backwards off the track mesh.
             if (m_CheckpointIndex != 0 || RandomizeTrainingStartCheckpoint)
                 return Vector3.zero;
@@ -679,6 +683,64 @@ namespace KartGame.AI
 
             checkpointCollider = Colliders[index];
             return checkpointCollider != null;
+        }
+
+        static bool IsSameCheckpoint(Collider expected, Collider actual)
+        {
+            if (expected == null || actual == null)
+                return false;
+
+            if (expected == actual)
+                return true;
+
+            if (expected.transform == actual.transform)
+                return true;
+
+            if (actual.transform.IsChildOf(expected.transform))
+                return true;
+
+            return expected.transform.IsChildOf(actual.transform);
+        }
+
+        bool ShouldDisableAsExtraTrainingAgent()
+        {
+            var allAgents = FindObjectsByType<KartAgent>(FindObjectsSortMode.None);
+            KartAgent preferredAgent = null;
+
+            for (int i = 0; i < allAgents.Length; i++)
+            {
+                var agent = allAgents[i];
+                if (agent == null || agent.Mode != AgentMode.Training || !agent.gameObject.activeInHierarchy)
+                    continue;
+
+                if (preferredAgent == null || IsPreferredTrainingAgent(agent, preferredAgent))
+                {
+                    preferredAgent = agent;
+                }
+            }
+
+            return preferredAgent != null && preferredAgent != this;
+        }
+
+        static bool IsPreferredTrainingAgent(KartAgent candidate, KartAgent currentBest)
+        {
+            if (candidate == null)
+                return false;
+
+            if (currentBest == null)
+                return true;
+
+            var candidateName = candidate.gameObject.name;
+            var currentBestName = currentBest.gameObject.name;
+
+            var candidateIsExactKartAi = string.Equals(candidateName, "Kart_AI", StringComparison.OrdinalIgnoreCase);
+            var currentBestIsExactKartAi = string.Equals(currentBestName, "Kart_AI", StringComparison.OrdinalIgnoreCase);
+            if (candidateIsExactKartAi != currentBestIsExactKartAi)
+                return candidateIsExactKartAi;
+
+            var candidatePath = GetHierarchyPath(candidate.transform);
+            var currentBestPath = GetHierarchyPath(currentBest.transform);
+            return string.Compare(candidatePath, currentBestPath, StringComparison.Ordinal) < 0;
         }
     }
 }

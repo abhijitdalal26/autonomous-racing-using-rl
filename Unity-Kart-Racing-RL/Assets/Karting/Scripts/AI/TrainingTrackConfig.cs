@@ -5,25 +5,19 @@ using UnityEngine;
 namespace KartGame.AI
 {
     /// <summary>
-    /// Centralizes training track discovery so agents can spawn from the real start line
-    /// while still using ordered checkpoints for lap progression.
+    /// Centralizes training track discovery so agents can use a stable ordered checkpoint list.
     /// </summary>
     public class TrainingTrackConfig : MonoBehaviour
     {
-        const string k_DefaultStartLineName = "StartFinishLine";
         const string k_DefaultCheckpointName = "Checkpoint";
 
         static TrainingTrackConfig s_RuntimeInstance;
 
-        [Tooltip("Optional explicit start-line transform. If empty, the scene object named StartFinishLine is used.")]
-        public Transform StartLineTransform;
-        [Tooltip("Optional collider on the red start line. Used to center the spawn pose when available.")]
-        public Collider StartLineCollider;
         [Tooltip("Ordered checkpoint colliders used for lap progression. If empty, the scene checkpoints are auto-discovered.")]
         public Collider[] OrderedCheckpoints;
-        [Tooltip("How far behind the red line the front training row should spawn.")]
-        public float StartLineBackOffset = 2f;
-        [Tooltip("Whether runtime auto-discovery should fill missing start-line and checkpoint references.")]
+        [Tooltip("Maximum number of ordered checkpoints to use. Extra discovered checkpoints are ignored.")]
+        public int MaxOrderedCheckpoints = 3;
+        [Tooltip("Whether runtime auto-discovery should fill missing checkpoint references.")]
         public bool AutoDiscoverSceneReferences = true;
 
         public static TrainingTrackConfig Resolve()
@@ -48,10 +42,10 @@ namespace KartGame.AI
         {
             checkpoints = null;
 
-            var configuredCheckpoints = FilterValidColliders(OrderedCheckpoints);
+            var configuredCheckpoints = LimitCheckpointCount(FilterValidColliders(OrderedCheckpoints));
             if (configuredCheckpoints.Count == 0 && AutoDiscoverSceneReferences)
             {
-                configuredCheckpoints = DiscoverSceneCheckpoints();
+                configuredCheckpoints = LimitCheckpointCount(DiscoverSceneCheckpoints());
                 OrderedCheckpoints = configuredCheckpoints.ToArray();
             }
 
@@ -59,41 +53,6 @@ namespace KartGame.AI
                 return false;
 
             checkpoints = configuredCheckpoints.ToArray();
-            return true;
-        }
-
-        public bool TryGetStartLine(out Transform startLineTransform, out Collider startLineCollider)
-        {
-            startLineTransform = null;
-            startLineCollider = null;
-
-            if (StartLineTransform != null)
-            {
-                startLineTransform = StartLineTransform;
-                if (StartLineCollider != null)
-                {
-                    startLineCollider = StartLineCollider;
-                }
-                else
-                {
-                    startLineCollider = StartLineTransform.GetComponent<Collider>();
-                }
-
-                return true;
-            }
-
-            if (!AutoDiscoverSceneReferences)
-                return false;
-
-            var discoveredStartLine = FindSceneTransformByName(k_DefaultStartLineName);
-            if (discoveredStartLine == null)
-                return false;
-
-            StartLineTransform = discoveredStartLine;
-            StartLineCollider = discoveredStartLine.GetComponent<Collider>();
-
-            startLineTransform = StartLineTransform;
-            startLineCollider = StartLineCollider;
             return true;
         }
 
@@ -110,6 +69,18 @@ namespace KartGame.AI
             }
 
             return validColliders;
+        }
+
+        List<Collider> LimitCheckpointCount(List<Collider> checkpoints)
+        {
+            if (checkpoints == null)
+                return new List<Collider>();
+
+            var maxCheckpoints = Mathf.Max(1, MaxOrderedCheckpoints);
+            if (checkpoints.Count <= maxCheckpoints)
+                return checkpoints;
+
+            return checkpoints.GetRange(0, maxCheckpoints);
         }
 
         static List<Collider> DiscoverSceneCheckpoints()
@@ -130,25 +101,6 @@ namespace KartGame.AI
 
             discoveredCheckpoints.Sort(CompareCheckpointColliders);
             return discoveredCheckpoints;
-        }
-
-        static Transform FindSceneTransformByName(string objectName)
-        {
-            var transforms = FindObjectsByType<Transform>(FindObjectsSortMode.None);
-            for (int i = 0; i < transforms.Length; i++)
-            {
-                var currentTransform = transforms[i];
-                if (currentTransform == null)
-                    continue;
-
-                if (!currentTransform.gameObject.activeInHierarchy)
-                    continue;
-
-                if (string.Equals(currentTransform.name, objectName, StringComparison.OrdinalIgnoreCase))
-                    return currentTransform;
-            }
-
-            return null;
         }
 
         static int CompareCheckpointColliders(Collider left, Collider right)
