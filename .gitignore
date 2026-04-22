@@ -12,7 +12,6 @@ venv/
 # Exclude raw TensorBoard event files (large, generated)
 logs/
 results/
-# Unity-Kart-Racing-RL/results/
 scratch/
 # Exclude all model checkpoints EXCEPT specific final/best versions
 models/*
