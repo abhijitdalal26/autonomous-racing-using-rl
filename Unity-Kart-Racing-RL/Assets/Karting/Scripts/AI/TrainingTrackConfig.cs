@@ -19,6 +19,8 @@ namespace KartGame.AI
         public int MaxOrderedCheckpoints = 3;
         [Tooltip("Whether runtime auto-discovery should fill missing checkpoint references.")]
         public bool AutoDiscoverSceneReferences = true;
+        [Tooltip("Optional training spawn point placed before the first checkpoint. When assigned, keep the finish/start line as the last ordered checkpoint.")]
+        public Transform EpisodeSpawnPoint;
 
         public static TrainingTrackConfig Resolve()
         {
@@ -54,6 +56,12 @@ namespace KartGame.AI
 
             checkpoints = configuredCheckpoints.ToArray();
             return true;
+        }
+
+        public bool TryGetEpisodeSpawnPoint(out Transform spawnPoint)
+        {
+            spawnPoint = EpisodeSpawnPoint;
+            return spawnPoint != null;
         }
 
         static List<Collider> FilterValidColliders(Collider[] source)

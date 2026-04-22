@@ -1,6 +1,7 @@
 using KartGame.KartSystems;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Unity.MLAgents;
 using Unity.MLAgents.Sensors;
 using Unity.MLAgents.Actuators;
@@ -38,6 +39,7 @@ namespace KartGame.AI
     public class KartAgent : Agent, IInput
     {
         const int k_DefaultRespawnMask = (1 << 9) | (1 << 10) | (1 << 11);
+        static string s_ClearedEpisodeTracePath;
 
 #region Training Modes
         [Tooltip("Are we training the agent or is the agent production ready?")]
@@ -126,6 +128,12 @@ namespace KartGame.AI
 #region Debugging
         [Header("Debug Option")] [Tooltip("Should we visualize the rays that the agent draws?")]
         public bool ShowRaycasts;
+        [Tooltip("When enabled, a structured episode trace is written to the project results folder for debugging.")]
+        public bool WriteEpisodeTrace = true;
+        [Tooltip("File name used for the structured episode trace inside the project's results folder.")]
+        public string EpisodeTraceFileName = "episode_trace.log";
+        [Tooltip("When enabled, the episode trace file is cleared once when Play mode starts.")]
+        public bool ClearEpisodeTraceOnPlay = true;
 #endregion
 
         ArcadeKart m_Kart;
@@ -139,20 +147,66 @@ namespace KartGame.AI
         bool m_EndEpisode;
         float m_LastAccumulatedReward;
         int m_StepsSinceReset;
+        int m_EpisodeNumber;
+        string m_PendingEndReason;
+        string m_EpisodeTracePath;
 
         void Awake()
         {
             m_Kart = GetComponent<ArcadeKart>();
             if (AgentSensorTransform == null) AgentSensorTransform = transform;
             if (TrackConfig == null) TrackConfig = TrainingTrackConfig.Resolve();
+            InitializeEpisodeTrace();
 
             if (Mode == AgentMode.Training && SoloTrainingAgent && ShouldDisableAsExtraTrainingAgent())
             {
+                TraceEvent("agent-disabled", "Disabled because SoloTrainingAgent kept another training kart active.");
                 gameObject.SetActive(false);
                 return;
             }
 
             RefreshTrainingCheckpointsFromScene();
+        }
+
+        void InitializeEpisodeTrace()
+        {
+            if (!WriteEpisodeTrace)
+                return;
+
+            var resultsDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "results"));
+            Directory.CreateDirectory(resultsDirectory);
+            m_EpisodeTracePath = Path.Combine(resultsDirectory, EpisodeTraceFileName);
+
+            if (ClearEpisodeTraceOnPlay && !string.Equals(s_ClearedEpisodeTracePath, m_EpisodeTracePath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.WriteAllText(m_EpisodeTracePath, string.Empty);
+                s_ClearedEpisodeTracePath = m_EpisodeTracePath;
+            }
+
+            TraceEvent("agent-awake", $"mode={Mode}");
+        }
+
+        void TraceEvent(string eventName, string details = "")
+        {
+            if (!WriteEpisodeTrace || string.IsNullOrEmpty(m_EpisodeTracePath))
+                return;
+
+            try
+            {
+                var position = transform != null ? transform.position : Vector3.zero;
+                var traceLine =
+                    $"{DateTime.Now:O}\tepisode={m_EpisodeNumber}\tstep={m_StepsSinceReset}\tevent={eventName}\tcheckpoint={m_CheckpointIndex}\tpos=({position.x:F2},{position.y:F2},{position.z:F2})";
+
+                if (!string.IsNullOrWhiteSpace(details))
+                    traceLine += "\t" + details.Replace('\t', ' ');
+
+                File.AppendAllText(m_EpisodeTracePath, traceLine + Environment.NewLine);
+            }
+            catch (Exception traceException)
+            {
+                WriteEpisodeTrace = false;
+                Debug.LogWarning($"Failed to write episode trace: {traceException.Message}");
+            }
         }
 
         void Start()
@@ -185,7 +239,9 @@ namespace KartGame.AI
             if (m_EndEpisode)
             {
                 m_EndEpisode = false;
+                TraceEvent("episode-end", m_PendingEndReason);
                 AddReward(m_LastAccumulatedReward);
+                m_PendingEndReason = null;
                 EndEpisode();
             }
         }
@@ -220,6 +276,8 @@ namespace KartGame.AI
 
                     if (IsOffTrack(out _))
                     {
+                        Debug.LogWarning($"{name} ended episode because it was detected off the drivable track.");
+                        TraceEvent("episode-end", "reason=off-track");
                         AddReward(OffTrackPenalty);
                         EndEpisode();
                     }
@@ -244,6 +302,15 @@ namespace KartGame.AI
             var expectedCheckpointIndex = (m_CheckpointIndex + 1) % Colliders.Length;
             var touchedExpectedCheckpoint = index == expectedCheckpointIndex;
 
+            if (ShowRaycasts)
+            {
+                Debug.Log(
+                    $"{name} touched checkpoint '{other.name}' (index {index}). " +
+                    $"Current index: {m_CheckpointIndex}. Expected next: {expectedCheckpointIndex}.");
+            }
+            TraceEvent("checkpoint-touch",
+                $"name={other.name};index={index};expected={expectedCheckpointIndex};current={m_CheckpointIndex}");
+
             if (index == m_CheckpointIndex) return; // Ignore if we hit the checkpoint we are already at!
 
             if (touchedExpectedCheckpoint)
@@ -258,9 +325,11 @@ namespace KartGame.AI
                 {
                     Debug.Log($"{name} advanced to checkpoint {m_CheckpointIndex}.");
                 }
+                TraceEvent("checkpoint-advance", $"name={other.name};new_index={m_CheckpointIndex}");
 
                 if (Mode == AgentMode.Training && EndEpisodeOnLastCheckpoint && returnedToEpisodeStartCheckpoint)
                 {
+                    TraceEvent("episode-end", "reason=completed-lap");
                     EndEpisode();
                 }
 
@@ -269,9 +338,15 @@ namespace KartGame.AI
 
             if (Mode == AgentMode.Training)
             {
+                Debug.LogWarning(
+                    $"{name} hit checkpoint '{other.name}' out of order. " +
+                    $"Expected '{Colliders[expectedCheckpointIndex].name}', but touched '{Colliders[index].name}'.");
+                TraceEvent("checkpoint-out-of-order",
+                    $"touched={other.name};expected={Colliders[expectedCheckpointIndex].name};index={index}");
                 AddReward(WrongCheckpointPenalty);
                 if (EndEpisodeOnWrongCheckpoint)
                 {
+                    TraceEvent("episode-end", $"reason=wrong-checkpoint;touched={other.name}");
                     EndEpisode();
                 }
             }
@@ -359,6 +434,14 @@ namespace KartGame.AI
                     {
                         if (!IsWithinTrainingResetGracePeriod())
                         {
+                            m_PendingEndReason =
+                                $"reason=sensor-hit;sensor={i};collider={hitInfo.collider.name};distance={hitInfo.distance:F2};threshold={current.HitValidationDistance:F2}";
+                            if (ShowRaycasts)
+                            {
+                                Debug.LogWarning(
+                                    $"{name} ended episode because sensor {i} detected '{hitInfo.collider.name}' " +
+                                    $"at distance {hitInfo.distance:F2}, inside threshold {current.HitValidationDistance:F2}.");
+                            }
                             m_LastAccumulatedReward += HitPenalty;
                             m_EndEpisode = true;
                         }
@@ -412,8 +495,27 @@ namespace KartGame.AI
                     m_CheckpointIndex = GetTrainingStartCheckpointIndex();
                     m_EpisodeStartCheckpointIndex = m_CheckpointIndex;
                     m_CheckpointsPassedThisEpisode = 0;
+                    m_EpisodeNumber++;
+                    m_PendingEndReason = null;
                     var collider = Colliders[m_CheckpointIndex];
-                    ResetToCheckpoint(collider);
+                    if (TryGetEpisodeSpawnPoint(out var spawnPoint) && !RandomizeTrainingStartCheckpoint)
+                    {
+                        ResetToSpawnPoint(spawnPoint);
+                        if (collider != null && collider.bounds.Contains(transform.position))
+                        {
+                            Debug.LogWarning(
+                                $"{name} spawn point appears to be inside or too close to checkpoint '{collider.name}'. " +
+                                "Move EpisodeSpawnPoint farther back so the kart crosses the trigger from outside.");
+                        }
+                        TraceEvent("episode-begin",
+                            $"spawn=EpisodeSpawnPoint;start_checkpoint_index={m_CheckpointIndex};target={Colliders[(m_CheckpointIndex + 1) % Colliders.Length].name}");
+                    }
+                    else
+                    {
+                        ResetToCheckpoint(collider);
+                        TraceEvent("episode-begin",
+                            $"spawn=CheckpointReset;start_checkpoint_index={m_CheckpointIndex};target={Colliders[(m_CheckpointIndex + 1) % Colliders.Length].name}");
+                    }
                     ClearMotionAndInput();
                     break;
                 default:
@@ -458,6 +560,16 @@ namespace KartGame.AI
             }
 
             spawnPosition += GetTrainingSpawnOffset(spawnRotation);
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        }
+
+        void ResetToSpawnPoint(Transform spawnPoint)
+        {
+            if (spawnPoint == null)
+                return;
+
+            var spawnRotation = spawnPoint.rotation;
+            var spawnPosition = spawnPoint.position + GetTrainingSpawnOffset(spawnRotation);
             transform.SetPositionAndRotation(spawnPosition, spawnRotation);
         }
 
@@ -551,6 +663,16 @@ namespace KartGame.AI
             return TrackConfig;
         }
 
+        bool TryGetEpisodeSpawnPoint(out Transform spawnPoint)
+        {
+            spawnPoint = null;
+            var activeTrackConfig = ResolveTrackConfig();
+            if (activeTrackConfig == null)
+                return false;
+
+            return activeTrackConfig.TryGetEpisodeSpawnPoint(out spawnPoint);
+        }
+
         bool IsOffTrack(out RaycastHit hit)
         {
             var groundCheckDistance = GroundCastDistance > 0f ? GroundCastDistance : TrainingGroundCheckDistance;
@@ -576,6 +698,13 @@ namespace KartGame.AI
 
             if (RandomizeTrainingStartCheckpoint)
                 return Random.Range(0, Colliders.Length);
+
+            if (TryGetEpisodeSpawnPoint(out _))
+            {
+                // With a dedicated spawn point before the line, keep the finish/start line as the
+                // last ordered checkpoint so the first expected checkpoint is index 0.
+                return Colliders.Length - 1;
+            }
 
             return ClampCheckpointIndex(TrainingStartCheckpointIndex);
         }

@@ -611,6 +611,7 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 0}
   CheckpointMask:
     serializedVersion: 2
     m_Bits: 65536
