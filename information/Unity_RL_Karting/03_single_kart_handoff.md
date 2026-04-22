@@ -2,6 +2,14 @@
 
 This file is the shortest path back into the Unity work.
 
+## Read This First
+
+The latest Unity status and scaling plan now lives in:
+
+- `information/Unity_RL_Karting/05_unity_status_2026_04_22.md`
+
+Use that file as the primary resume point. This handoff stays here as historical context for the earlier single-kart stabilization phase.
+
 ## Goal For The Next Session
 
 Verify that one ML-Agents kart can train correctly in `MainScene` without:
