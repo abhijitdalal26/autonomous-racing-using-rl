@@ -20,14 +20,45 @@ Unity training timing snapshot:
 
 ```
 car-racing/
-├── train.py          # PPO training script with checkpoint callbacks
-├── infer.py          # Evaluation & video recording script
-├── models/           # Saved checkpoints (.zip) — created during training
-├── logs/             # TensorBoard logs — created during training
-└── videos/           # Output MP4 videos — created during inference
+├── Unity-Kart-Racing-RL/ # Unity 3D ML-Agents Project
+├── train.py              # PPO training script with checkpoint callbacks
+├── infer.py              # Evaluation & video recording script
+├── models/               # Saved checkpoints (.zip) — created during training
+├── logs/                 # TensorBoard logs — created during training
+└── videos/               # Output MP4 videos — created during inference
 ```
 
 ---
+
+## 🏎️ Unity 3D ML-Agents Setup
+
+This repository also contains a full 3D Unity ML-Agents project where a Kart learns to drive using Reinforcement Learning.
+
+### Prerequisites
+- **Unity Hub** and **Unity Editor `6000.4.1f1`** (or a compatible version).
+- **Git LFS** (Large File Storage) installed on your machine before cloning.
+
+### How to Clone and Open
+1. **Install Git LFS** (if you haven't already):
+   ```bash
+   git lfs install
+   ```
+2. **Clone the repository**:
+   ```bash
+   git clone https://github.com/abhijitdalal26/autonomous-racing-using-rl.git
+   cd autonomous-racing-using-rl
+   ```
+3. **Open in Unity**:
+   - Open **Unity Hub**.
+   - Click **Add** -> **Add project from disk**.
+   - Select the `Unity-Kart-Racing-RL` folder (not the root `car-racing` folder).
+   - Click on the project to open it in Unity `6000.4.1f1`.
+
+*(Note: Unity will take some time to download libraries and compile scripts during the first launch. This is expected as the `Library/` cache is purposely ignored in Git.)*
+
+---
+
+## 🏁 2D Gymnasium Setup
 
 ## Environment
 
