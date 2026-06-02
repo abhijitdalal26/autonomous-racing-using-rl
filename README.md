@@ -1,6 +1,6 @@
 # Autonomous Car Racing using Reinforcement Learning
 
-A Proximal Policy Optimization (PPO) agent that learns to drive and complete a lap in the **Gymnasium `CarRacing-v3`** environment from raw pixel observations.
+This project implements autonomous racing agents trained using Deep Reinforcement Learning. It was developed in two phases: I initially used the 2D **Gymnasium `CarRacing-v3`** environment to get familiar with reinforcement learning workflows (including CNN policies, image processing, and frame stacking), and subsequently scaled up the implementation into a 3D environment using **Unity ML-Agents** (PPO) to train a kart to drive autonomously on a track.
 
 ## Demo
 
@@ -55,6 +55,17 @@ This repository also contains a full 3D Unity ML-Agents project where a Kart lea
    - Click on the project to open it in Unity `6000.4.1f1`.
 
 *(Note: Unity will take some time to download libraries and compile scripts during the first launch. This is expected as the `Library/` cache is purposely ignored in Git.)*
+
+### Custom Unity Scripts
+To tailor the default Unity Karting Microgame for Reinforcement Learning training, I wrote/modified the following core C# scripts:
+- **[KartAgent.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/AI/KartAgent.cs)**: Custom agent class implementing the ML-Agents API. Handles vector observations (5 raycast direction sensors + speed/velocity components), reward distribution (checkpoint success vs off-track/collision penalties), and physics resets. Also includes a `UseScenePositionOnStart` toggle for testing models from custom starting editor points.
+- **[ArcadeKart.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/ArcadeKart.cs)**: Driving physics controller, modified to cleanly handle dynamic input refreshing and safely skip destroyed/null references during episode resets.
+- **[GameFlowManager.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/GameFlowManager.cs)**: Controls game loops (countdown, winning, and losing scenes). Modified to detect active training configurations, skip the pre-race 3-2-1 countdown, and bypass loading scene transitions during training.
+
+### Play the Standalone Build Directly
+If you want to try the final trained model without installing Unity or setting up the Python environments, a standalone pre-built executable is provided:
+1. Extract the compressed file [Build.rar](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Build.rar).
+2. Run the executable game file to watch the trained agent drive the kart autonomously on the track.
 
 ---
 
@@ -132,19 +143,8 @@ tensorboard --logdir ./logs
 - `train/entropy_loss` — should decrease gradually
 - `train/explained_variance` — should increase toward 1.0
 
----
-
-## Inference & Video Recording
-
-```bash
-# Evaluate a checkpoint and save a video
-conda activate car-rl
-python infer.py --model models/ppo_carracing_50000_steps.zip   # early
-python infer.py --model models/ppo_carracing_300000_steps.zip  # mid
-python infer.py --model models/best_model.zip                  # best
-```
-
-Videos are saved to `./videos/`.
+> [!TIP]
+> **Training Plots:** You can view high-resolution plots of these training metrics (including reward curves and loss histories) directly in the [images/](file:///d:/AI-ML/car-racing/images/) directory.
 
 ---
 
@@ -158,8 +158,7 @@ Videos are saved to `./videos/`.
 
 ---
 
-## Hardware
+## References
 
-- GPU: NVIDIA GeForce RTX 3050 (6 GB VRAM)
-- CUDA: 12.4
-- PyTorch: 2.6.0+cu124
+1. Schulman, J., Wolski, F., Dhariwal, P., Radford, A., & Klimov, O. (2017). *Proximal Policy Optimization Algorithms*. OpenAI. [arXiv:1707.06347](https://arxiv.org/abs/1707.06347)
+2. Juliani, A., Berges, V.-P., Teng, E., Cohen, A., Harper, J., Elion, C., Goy, C., Gao, Y., Henry, H., Marchesi, M., Huang, C.-H., Ruiz, K., Mayor, I., Astriab, J., Dong, R.-P., Zhang, S., Chen, P., & Lange, D. (2018). *Unity: A General Platform for Intelligent Agents*. Unity Technologies. [arXiv:1809.02627](https://arxiv.org/abs/1809.02627)
