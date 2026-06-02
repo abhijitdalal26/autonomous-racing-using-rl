@@ -23,6 +23,7 @@ models/*
 
 # ── Debug Logs and Large Archives ────────────────
 *.rar
+!Unity-Kart-Racing-RL/Build.rar
 *.log
 
 # ── Videos ───────────────────────────────────────
