@@ -1,5 +1,15 @@
 # Autonomous Car Racing using Reinforcement Learning
 
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=c-sharp&logoColor=white" alt="C#" />
+  <img src="https://img.shields.io/badge/Unity-000000?style=for-the-badge&logo=unity&logoColor=white" alt="Unity" />
+  <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/TensorBoard-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white" alt="TensorBoard" />
+  <img src="https://img.shields.io/badge/Anaconda-3EB049?style=for-the-badge&logo=anaconda&logoColor=white" alt="Anaconda" />
+  <img src="https://img.shields.io/badge/Git_LFS-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git LFS" />
+</p>
+
 This project implements autonomous racing agents trained using Deep Reinforcement Learning. It was developed in two phases: I initially used the 2D **Gymnasium `CarRacing-v3`** environment to get familiar with reinforcement learning workflows (including CNN policies, image processing, and frame stacking), and subsequently scaled up the implementation into a 3D environment using **Unity ML-Agents** (PPO) to train a kart to drive autonomously on a track.
 
 ## Demo
