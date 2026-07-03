@@ -68,13 +68,13 @@ This repository also contains a full 3D Unity ML-Agents project where a Kart lea
 
 ### Custom Unity Scripts
 To tailor the default Unity Karting Microgame for Reinforcement Learning training, I wrote/modified the following core C# scripts:
-- **[KartAgent.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/AI/KartAgent.cs)**: Custom agent class implementing the ML-Agents API. Handles vector observations (5 raycast direction sensors + speed/velocity components), reward distribution (checkpoint success vs off-track/collision penalties), and physics resets. Also includes a `UseScenePositionOnStart` toggle for testing models from custom starting editor points.
-- **[ArcadeKart.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/ArcadeKart.cs)**: Driving physics controller, modified to cleanly handle dynamic input refreshing and safely skip destroyed/null references during episode resets.
-- **[GameFlowManager.cs](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Assets/Karting/Scripts/GameFlowManager.cs)**: Controls game loops (countdown, winning, and losing scenes). Modified to detect active training configurations, skip the pre-race 3-2-1 countdown, and bypass loading scene transitions during training.
+- **[KartAgent.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/AI/KartAgent.cs)**: Custom agent class implementing the ML-Agents API. Handles vector observations (5 raycast direction sensors + speed/velocity components), reward distribution (checkpoint success vs off-track/collision penalties), and physics resets. Also includes a `UseScenePositionOnStart` toggle for testing models from custom starting editor points.
+- **[ArcadeKart.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/ArcadeKart.cs)**: Driving physics controller, modified to cleanly handle dynamic input refreshing and safely skip destroyed/null references during episode resets.
+- **[GameFlowManager.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/GameFlowManager.cs)**: Controls game loops (countdown, winning, and losing scenes). Modified to detect active training configurations, skip the pre-race 3-2-1 countdown, and bypass loading scene transitions during training.
 
 ### Play the Standalone Build Directly
 If you want to try the final trained model without installing Unity or setting up the Python environments, a standalone pre-built executable is provided:
-1. Extract the compressed file [Build.rar](file:///d:/AI-ML/car-racing/Unity-Kart-Racing-RL/Build.rar).
+1. Extract the compressed file [Build.rar](Unity-Kart-Racing-RL/Build.rar).
 2. Run the executable game file to watch the trained agent drive the kart autonomously on the track.
 
 ---
@@ -154,7 +154,7 @@ tensorboard --logdir ./logs
 - `train/explained_variance` — should increase toward 1.0
 
 > [!TIP]
-> **Training Plots:** You can view high-resolution plots of these training metrics (including reward curves and loss histories) directly in the [images/](file:///d:/AI-ML/car-racing/images/) directory.
+> **Training Plots:** You can view high-resolution plots of these training metrics (including reward curves and loss histories) directly in the [images/](images/) directory.
 
 ---
 
