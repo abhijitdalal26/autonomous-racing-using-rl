@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/Git_LFS-F05032?style=for-the-badge&logo=git&logoColor=white" alt="Git LFS" />
 </p>
 
+Project write-up: [abhijitdalal.vercel.app/projects/autonomous-racing-using-rl](https://abhijitdalal.vercel.app/projects/autonomous-racing-using-rl)
+
 This project implements autonomous racing agents trained using Deep Reinforcement Learning. It was developed in two phases: I initially used the 2D **Gymnasium `CarRacing-v3`** environment to get familiar with reinforcement learning workflows (including CNN policies, image processing, and frame stacking), and subsequently scaled up the implementation into a 3D environment using **Unity ML-Agents** (PPO) to train a kart to drive autonomously on a track.
 
 ## Demo
@@ -69,7 +71,7 @@ This repository also contains a full 3D Unity ML-Agents project where a Kart lea
 ### Custom Unity Scripts
 To tailor the default Unity Karting Microgame for Reinforcement Learning training, I wrote/modified the following core C# scripts:
 - **[KartAgent.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/AI/KartAgent.cs)**: Custom agent class implementing the ML-Agents API. Handles vector observations (5 raycast direction sensors + speed/velocity components), reward distribution (checkpoint success vs off-track/collision penalties), and physics resets. Also includes a `UseScenePositionOnStart` toggle for testing models from custom starting editor points.
-- **[ArcadeKart.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/ArcadeKart.cs)**: Driving physics controller, modified to cleanly handle dynamic input refreshing and safely skip destroyed/null references during episode resets.
+- **[ArcadeKart.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/KartSystems/ArcadeKart.cs)**: Driving physics controller, modified to cleanly handle dynamic input refreshing and safely skip destroyed/null references during episode resets.
 - **[GameFlowManager.cs](Unity-Kart-Racing-RL/Assets/Karting/Scripts/GameFlowManager.cs)**: Controls game loops (countdown, winning, and losing scenes). Modified to detect active training configurations, skip the pre-race 3-2-1 countdown, and bypass loading scene transitions during training.
 
 ### Play the Standalone Build Directly
